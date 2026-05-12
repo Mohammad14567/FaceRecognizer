@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapBite — Gesture Selfie Booth</title>
+  <title></title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -19,29 +19,7 @@
       justify-content: center;
       padding: 2rem 1rem;
     }
-    #app {
-      width: 100%;
-      max-width: 860px;
-    }
-    #sb-header {
-      display: flex;
-      align-items: baseline;
-      gap: 12px;
-      margin-bottom: 1.5rem;
-    }
-    #sb-logo {
-      font-family: 'Playfair Display', serif;
-      font-size: 28px;
-      color: #f0f0f0;
-      letter-spacing: -0.5px;
-    }
-    #sb-logo span {
-      color: #f59e0b;
-    }
-    #sb-tagline {
-      font-size: 13px;
-      color: #888;
-    }
+    #app { width: 100%; max-width: 860px; }
     #cam-wrap {
       position: relative;
       width: 100%;
@@ -77,7 +55,6 @@
       position: absolute;
       top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      font-family: 'Playfair Display', serif;
       font-size: 120px;
       color: #fff;
       text-shadow: 0 4px 24px rgba(0,0,0,0.7);
@@ -152,8 +129,7 @@
     button:hover { background: #1e1e1e; }
     button:active { transform: scale(0.98); }
     button:disabled { opacity: 0.4; cursor: not-allowed; }
-    #btn-start { border-color: #4ade80; color: #4ade80; }
-    #btn-dl    { border-color: #60a5fa; color: #60a5fa; }
+    #btn-retry { border-color: #f59e0b; color: #f59e0b; }
 
     #photo-result {
       display: none;
@@ -175,28 +151,10 @@
       font-size: 13px;
     }
 
-    /* Branding overlay on photo */
-    #photo-wrapper {
-      position: relative; display: none;
-    }
-    #photo-wrapper img { width: 100%; display: block; }
-    #photo-overlay-label {
-      position: absolute;
-      bottom: 16px; right: 20px;
-      font-family: 'Playfair Display', serif;
-      font-size: 18px;
-      color: rgba(255,255,255,0.85);
-      text-shadow: 0 1px 6px rgba(0,0,0,0.8);
-    }
   </style>
 </head>
 <body>
 <div id="app">
-
-  <div id="sb-header">
-    <div id="sb-logo">SnapBite <span>&#10024;</span></div>
-    <div id="sb-tagline">Gesture-activated selfie booth — wave your hand to snap!</div>
-  </div>
 
   <div id="cam-wrap">
     <div id="cam-placeholder">
@@ -204,9 +162,9 @@
         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
         <circle cx="12" cy="13" r="4"/>
       </svg>
-      <p>Click "Start Camera" to begin</p>
+      <p>Requesting camera access...</p>
     </div>
-    <video id="video" autoplay muted playsinline></video>
+    <video id="video" autoplay muted playsinline webkit-playsinline></video>
     <canvas id="overlay"></canvas>
     <div id="flash"></div>
     <div id="countdown-badge" aria-live="assertive"></div>
@@ -225,18 +183,7 @@
   </div>
 
   <div id="controls">
-    <button id="btn-start" onclick="startCam()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-      Start Camera
-    </button>
-    <button id="btn-retry" style="display:none" onclick="retake()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
-      Retake
-    </button>
-    <button id="btn-dl" id="btn-dl" style="display:none" onclick="downloadPhoto()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Download Photo
-    </button>
+    <button id="btn-retry" style="display:none" onclick="retake()">Retake</button>
   </div>
 
   <div id="photo-result">
@@ -244,7 +191,7 @@
   </div>
 
   <div id="no-mediapipe">
-    ⚠️ MediaPipe failed to load. Please check your internet connection and reload the page.
+    MediaPipe failed to load. Please check your internet connection and reload the page.
   </div>
 
 </div>
@@ -260,9 +207,7 @@ const statusDot  = document.getElementById('status-dot');
 const statusMsg  = document.getElementById('status-msg');
 const photoResult = document.getElementById('photo-result');
 const photoImg   = document.getElementById('photo-img');
-const btnStart   = document.getElementById('btn-start');
 const btnRetry   = document.getElementById('btn-retry');
-const btnDl      = document.getElementById('btn-dl');
 const placeholder = document.getElementById('cam-placeholder');
 
 let ctx, handsModel, mpCam;
@@ -355,27 +300,12 @@ function capturePhoto() {
   sc.drawImage(video, 0, 0);
   sc.restore();
 
-  // Optional: draw restaurant branding on the photo
-  sc.font = 'bold 32px "Playfair Display", serif';
-  sc.fillStyle = 'rgba(255,255,255,0.75)';
-  sc.textAlign = 'right';
-  sc.fillText('SnapBite ✨', snap.width - 24, snap.height - 24);
-
   photoDataURL = snap.toDataURL('image/jpeg', 0.95);
   photoImg.src = photoDataURL;
   photoResult.style.display = 'block';
   btnRetry.style.display = '';
-  btnDl.style.display = '';
-  setStatus('Photo taken! Download or retake.', 'ready');
+  setStatus('Photo taken! Retake if needed.', 'ready');
   if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
-}
-
-function downloadPhoto() {
-  if (!photoDataURL) return;
-  const a = document.createElement('a');
-  a.href = photoDataURL;
-  a.download = 'snapbite-selfie.jpg';
-  a.click();
 }
 
 function retake() {
@@ -385,7 +315,6 @@ function retake() {
   lastGesture = null;
   photoResult.style.display = 'none';
   btnRetry.style.display = 'none';
-  btnDl.style.display = 'none';
   setStatus('Show a gesture to take a selfie', 'ready');
 }
 
@@ -433,8 +362,6 @@ function onResults(results) {
 }
 
 async function startCam() {
-  btnStart.disabled = true;
-  btnStart.textContent = 'Loading...';
   setStatus('Starting camera...', '');
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -469,16 +396,13 @@ async function startCam() {
     });
     mpCam.start();
 
-    btnStart.style.display = 'none';
     setStatus('Show a gesture to take a selfie', 'ready');
   } catch (e) {
     setStatus('Camera access denied or unavailable', '');
-    btnStart.disabled = false;
-    btnStart.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-      Start Camera`;
   }
 }
+
+window.addEventListener('load', startCam);
 </script>
 </body>
 </html>
