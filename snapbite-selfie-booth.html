@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapBite — Gesture Selfie Booth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #0d0d0d;
+      color: #f0f0f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    #app {
+      width: 100%;
+      max-width: 860px;
+    }
+    #sb-header {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 1.5rem;
+    }
+    #sb-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      color: #f0f0f0;
+      letter-spacing: -0.5px;
+    }
+    #sb-logo span {
+      color: #f59e0b;
+    }
+    #sb-tagline {
+      font-size: 13px;
+      color: #888;
+    }
+    #cam-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #1a1a1a;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #2a2a2a;
+    }
+    #cam-wrap video {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+      display: none;
+    }
+    #overlay {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+    #flash {
+      position: absolute; inset: 0;
+      background: #fff;
+      opacity: 0;
+      z-index: 10;
+      pointer-events: none;
+      border-radius: 16px;
+      transition: opacity 0.05s;
+    }
+    #countdown-badge {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Playfair Display', serif;
+      font-size: 120px;
+      color: #fff;
+      text-shadow: 0 4px 24px rgba(0,0,0,0.7);
+      z-index: 8;
+      display: none;
+      pointer-events: none;
+      line-height: 1;
+    }
+    #status-bar {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.75));
+      padding: 2rem 1.25rem 1rem;
+      z-index: 5;
+      pointer-events: none;
+    }
+    #status-text {
+      font-size: 14px;
+      color: #fff;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #555;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    #status-dot.ready  { background: #4ade80; }
+    #status-dot.gesture { background: #f59e0b; animation: pulse-dot 0.6s infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    #cam-placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; z-index: 1;
+    }
+    #cam-placeholder svg { opacity: 0.3; }
+    #cam-placeholder p { font-size: 14px; color: #666; }
+
+    #gesture-guide {
+      display: flex; gap: 8px; margin-top: 1rem; flex-wrap: wrap;
+    }
+    .g-chip {
+      font-size: 12px;
+      padding: 5px 14px;
+      border-radius: 8px;
+      background: #1e1e1e;
+      border: 1px solid #2e2e2e;
+      color: #aaa;
+    }
+    .g-chip span { font-size: 16px; margin-right: 5px; }
+
+    #controls {
+      display: flex; gap: 10px; margin-top: 1.25rem; flex-wrap: wrap;
+    }
+    button {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 500;
+      padding: 10px 22px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: transparent;
+      color: #f0f0f0;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    button:hover { background: #1e1e1e; }
+    button:active { transform: scale(0.98); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    #btn-start { border-color: #4ade80; color: #4ade80; }
+    #btn-dl    { border-color: #60a5fa; color: #60a5fa; }
+
+    #photo-result {
+      display: none;
+      margin-top: 1.5rem;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #2a2a2a;
+    }
+    #photo-result img { width: 100%; display: block; }
+
+    #no-mediapipe {
+      display: none;
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #1e1a0e;
+      border: 1px solid #78350f;
+      border-radius: 8px;
+      color: #fbbf24;
+      font-size: 13px;
+    }
+
+    /* Branding overlay on photo */
+    #photo-wrapper {
+      position: relative; display: none;
+    }
+    #photo-wrapper img { width: 100%; display: block; }
+    #photo-overlay-label {
+      position: absolute;
+      bottom: 16px; right: 20px;
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      color: rgba(255,255,255,0.85);
+      text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <div id="sb-header">
+    <div id="sb-logo">SnapBite <span>&#10024;</span></div>
+    <div id="sb-tagline">Gesture-activated selfie booth — wave your hand to snap!</div>
+  </div>
+
+  <div id="cam-wrap">
+    <div id="cam-placeholder">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <p>Click "Start Camera" to begin</p>
+    </div>
+    <video id="video" autoplay muted playsinline></video>
+    <canvas id="overlay"></canvas>
+    <div id="flash"></div>
+    <div id="countdown-badge" aria-live="assertive"></div>
+    <div id="status-bar">
+      <div id="status-text">
+        <div id="status-dot"></div>
+        <span id="status-msg">Camera off</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="gesture-guide">
+    <div class="g-chip"><span>🖐</span> Open palm — 3s countdown</div>
+    <div class="g-chip"><span>✌️</span> Peace sign — instant snap</div>
+    <div class="g-chip"><span>👊</span> Fist — cancel</div>
+  </div>
+
+  <div id="controls">
+    <button id="btn-start" onclick="startCam()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      Start Camera
+    </button>
+    <button id="btn-retry" style="display:none" onclick="retake()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+      Retake
+    </button>
+    <button id="btn-dl" id="btn-dl" style="display:none" onclick="downloadPhoto()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download Photo
+    </button>
+  </div>
+
+  <div id="photo-result">
+    <img id="photo-img" src="" alt="Your selfie" />
+  </div>
+
+  <div id="no-mediapipe">
+    ⚠️ MediaPipe failed to load. Please check your internet connection and reload the page.
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script>
+const video      = document.getElementById('video');
+const overlay    = document.getElementById('overlay');
+const flash      = document.getElementById('flash');
+const cdBadge    = document.getElementById('countdown-badge');
+const statusDot  = document.getElementById('status-dot');
+const statusMsg  = document.getElementById('status-msg');
+const photoResult = document.getElementById('photo-result');
+const photoImg   = document.getElementById('photo-img');
+const btnStart   = document.getElementById('btn-start');
+const btnRetry   = document.getElementById('btn-retry');
+const btnDl      = document.getElementById('btn-dl');
+const placeholder = document.getElementById('cam-placeholder');
+
+let ctx, handsModel, mpCam;
+let countingDown = false, snapped = false;
+let gestureHoldFrames = 0;
+const HOLD_FRAMES = 18;
+let lastGesture = null;
+let photoDataURL = null;
+
+function setStatus(msg, state) {
+  statusMsg.textContent = msg;
+  statusDot.className = '';
+  if (state) statusDot.classList.add(state);
+}
+
+function classifyGesture(lm) {
+  if (!lm || lm.length < 21) return 'none';
+  const tips = [4, 8, 12, 16, 20];
+  const mids = [3, 6, 10, 14, 18];
+  const extended = tips.map((t, i) => {
+    if (i === 0) return lm[t].x < lm[mids[i]].x;
+    return lm[t].y < lm[mids[i]].y;
+  });
+  const fingerCount = extended.slice(1).filter(Boolean).length;
+  const thumbOut = extended[0];
+  if (fingerCount === 4 && thumbOut) return 'open';
+  if (fingerCount === 2 && extended[1] && extended[2] && !extended[3] && !extended[4]) return 'peace';
+  if (fingerCount === 0) return 'fist';
+  return 'none';
+}
+
+function drawLandmarks(lm) {
+  if (!ctx || !lm) return;
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  const w = overlay.width, h = overlay.height;
+  const connections = [
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [5,9],[9,10],[10,11],[11,12],
+    [9,13],[13,14],[14,15],[15,16],
+    [13,17],[17,18],[18,19],[19,20],[0,17]
+  ];
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 2;
+  for (const [a, b] of connections) {
+    ctx.beginPath();
+    ctx.moveTo((1 - lm[a].x) * w, lm[a].y * h);
+    ctx.lineTo((1 - lm[b].x) * w, lm[b].y * h);
+    ctx.stroke();
+  }
+  for (const p of lm) {
+    ctx.beginPath();
+    ctx.arc((1 - p.x) * w, p.y * h, 5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(245,158,11,0.9)';
+    ctx.fill();
+  }
+}
+
+function triggerCountdown(seconds, onDone) {
+  if (countingDown) return;
+  countingDown = true;
+  cdBadge.style.display = 'block';
+  let s = seconds;
+  const tick = () => {
+    if (s <= 0) {
+      cdBadge.style.display = 'none';
+      countingDown = false;
+      onDone();
+      return;
+    }
+    cdBadge.textContent = s;
+    s--;
+    setTimeout(tick, 900);
+  };
+  tick();
+}
+
+function capturePhoto() {
+  snapped = true;
+  flash.style.opacity = 1;
+  setTimeout(() => { flash.style.opacity = 0; }, 140);
+
+  const snap = document.createElement('canvas');
+  snap.width  = video.videoWidth  || 1280;
+  snap.height = video.videoHeight || 720;
+  const sc = snap.getContext('2d');
+  sc.save();
+  sc.translate(snap.width, 0);
+  sc.scale(-1, 1);
+  sc.drawImage(video, 0, 0);
+  sc.restore();
+
+  // Optional: draw restaurant branding on the photo
+  sc.font = 'bold 32px "Playfair Display", serif';
+  sc.fillStyle = 'rgba(255,255,255,0.75)';
+  sc.textAlign = 'right';
+  sc.fillText('SnapBite ✨', snap.width - 24, snap.height - 24);
+
+  photoDataURL = snap.toDataURL('image/jpeg', 0.95);
+  photoImg.src = photoDataURL;
+  photoResult.style.display = 'block';
+  btnRetry.style.display = '';
+  btnDl.style.display = '';
+  setStatus('Photo taken! Download or retake.', 'ready');
+  if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
+}
+
+function downloadPhoto() {
+  if (!photoDataURL) return;
+  const a = document.createElement('a');
+  a.href = photoDataURL;
+  a.download = 'snapbite-selfie.jpg';
+  a.click();
+}
+
+function retake() {
+  snapped = false;
+  countingDown = false;
+  gestureHoldFrames = 0;
+  lastGesture = null;
+  photoResult.style.display = 'none';
+  btnRetry.style.display = 'none';
+  btnDl.style.display = 'none';
+  setStatus('Show a gesture to take a selfie', 'ready');
+}
+
+function onResults(results) {
+  if (snapped || countingDown) return;
+  overlay.width  = video.videoWidth  || 640;
+  overlay.height = video.videoHeight || 360;
+  const lm = results.multiHandLandmarks?.[0];
+  if (lm) {
+    drawLandmarks(lm);
+    const g = classifyGesture(lm);
+    if (g !== 'none') {
+      if (g === lastGesture) gestureHoldFrames++;
+      else { gestureHoldFrames = 0; lastGesture = g; }
+      if (gestureHoldFrames >= HOLD_FRAMES) {
+        gestureHoldFrames = 0;
+        if (g === 'open') {
+          setStatus('Open palm! Starting countdown...', 'gesture');
+          triggerCountdown(3, capturePhoto);
+        } else if (g === 'peace') {
+          setStatus('Peace sign! Snapping now...', 'gesture');
+          capturePhoto();
+        } else if (g === 'fist') {
+          setStatus('Show a gesture to take a selfie', 'ready');
+        }
+      } else {
+        const names = {
+          open: '🖐 Hold palm still...',
+          peace: '✌️ Hold peace sign...',
+          fist: '👊 Fist — cancel'
+        };
+        setStatus(names[g] || 'Gesture detected...', 'gesture');
+      }
+    } else {
+      lastGesture = null;
+      gestureHoldFrames = 0;
+      setStatus('Show a gesture to take a selfie', 'ready');
+    }
+  } else {
+    if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
+    lastGesture = null;
+    gestureHoldFrames = 0;
+    setStatus('No hand detected — show your hand to the camera', 'ready');
+  }
+}
+
+async function startCam() {
+  btnStart.disabled = true;
+  btnStart.textContent = 'Loading...';
+  setStatus('Starting camera...', '');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    video.srcObject = stream;
+    video.style.display = '';
+    placeholder.style.display = 'none';
+    ctx = overlay.getContext('2d');
+
+    if (typeof Hands === 'undefined') {
+      document.getElementById('no-mediapipe').style.display = '';
+      return;
+    }
+
+    handsModel = new Hands({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+    });
+    handsModel.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.7,
+      minTrackingConfidence: 0.6
+    });
+    handsModel.onResults(onResults);
+
+    mpCam = new Camera(video, {
+      onFrame: async () => { await handsModel.send({ image: video }); },
+      width: 1280,
+      height: 720
+    });
+    mpCam.start();
+
+    btnStart.style.display = 'none';
+    setStatus('Show a gesture to take a selfie', 'ready');
+  } catch (e) {
+    setStatus('Camera access denied or unavailable', '');
+    btnStart.disabled = false;
+    btnStart.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      Start Camera`;
+  }
+}
+</script>
+</body>
+</html>
