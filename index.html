@@ -150,6 +150,53 @@
       font-size: 13px;
     }
 
+    #phone-modal {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    #phone-modal-content {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 16px;
+      padding: 2rem;
+      max-width: 400px;
+      width: 90%;
+    }
+    #phone-modal-content h2 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+    #phone-modal-content p {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 16px;
+    }
+    #phone-modal-content input {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #0d0d0d;
+      color: #f0f0f0;
+      font-size: 16px;
+      font-family: 'DM Sans', sans-serif;
+      margin-bottom: 12px;
+      outline: none;
+    }
+    #phone-modal-content input:focus { border-color: #4ade80; }
+    #phone-save {
+      width: 100%;
+      background: #4ade80;
+      color: #0d0d0d;
+      border: none;
+      font-weight: 600;
+      justify-content: center;
+    }
+    #phone-save:hover { background: #22c55e; }
   </style>
 </head>
 <body>
@@ -179,6 +226,7 @@
     <div class="g-chip"><span>🖐</span> Open palm — 3s countdown</div>
     <div class="g-chip"><span>✌️</span> Peace sign — instant snap</div>
     <div class="g-chip"><span>👊</span> Fist — cancel</div>
+    <div class="g-chip"><span>☝️</span> One finger — open WhatsApp</div>
   </div>
 
   <div id="controls">
@@ -191,6 +239,15 @@
 
   <div id="no-mediapipe">
     MediaPipe failed to load. Please check your internet connection and reload the page.
+  </div>
+
+  <div id="phone-modal">
+    <div id="phone-modal-content">
+      <h2>WhatsApp Number</h2>
+      <p>Enter your WhatsApp number with country code (digits only, no + sign). This will be used when you make the 1-finger gesture.</p>
+      <input type="tel" id="phone-input" placeholder="e.g. 14155552671" />
+      <button id="phone-save" onclick="savePhone()">Save</button>
+    </div>
   </div>
 
 </div>
@@ -215,6 +272,7 @@ let gestureHoldFrames = 0;
 const HOLD_FRAMES = 18;
 let lastGesture = null;
 let photoDataURL = null;
+let phoneNumber = localStorage.getItem('wa_phone') || '';
 
 function setStatus(msg, state) {
   statusMsg.textContent = msg;
@@ -234,6 +292,7 @@ function classifyGesture(lm) {
   const thumbOut = extended[0];
   if (fingerCount === 4 && thumbOut) return 'open';
   if (fingerCount === 2 && extended[1] && extended[2] && !extended[3] && !extended[4]) return 'peace';
+  if (fingerCount === 1 && extended[1]) return 'one';
   if (fingerCount === 0) return 'fist';
   return 'none';
 }
@@ -317,6 +376,25 @@ function retake() {
   setStatus('Show a gesture to take a selfie', 'ready');
 }
 
+function savePhone() {
+  const input = document.getElementById('phone-input');
+  const val = input.value.trim().replace(/\D/g, '');
+  if (val) {
+    phoneNumber = val;
+    localStorage.setItem('wa_phone', val);
+    document.getElementById('phone-modal').style.display = 'none';
+    setStatus('WhatsApp number saved!', 'ready');
+  }
+}
+
+function openWhatsApp() {
+  if (!phoneNumber) {
+    document.getElementById('phone-modal').style.display = 'flex';
+    return;
+  }
+  window.open('https://wa.me/' + phoneNumber, '_blank');
+}
+
 function onResults(results) {
   if (snapped || countingDown) return;
   overlay.width  = video.videoWidth  || 640;
@@ -338,12 +416,17 @@ function onResults(results) {
           capturePhoto();
         } else if (g === 'fist') {
           setStatus('Show a gesture to take a selfie', 'ready');
+        } else if (g === 'one') {
+          setStatus('One finger! Opening WhatsApp...', 'gesture');
+          capturePhoto();
+          openWhatsApp();
         }
       } else {
         const names = {
           open: '🖐 Hold palm still...',
           peace: '✌️ Hold peace sign...',
-          fist: '👊 Fist — cancel'
+          fist: '👊 Fist — cancel',
+          one: '☝️ Hold one finger...'
         };
         setStatus(names[g] || 'Gesture detected...', 'gesture');
       }
@@ -401,7 +484,14 @@ async function startCam() {
   }
 }
 
-window.addEventListener('load', startCam);
+window.addEventListener('load', () => {
+  if (!localStorage.getItem('wa_phone')) {
+    setTimeout(() => {
+      document.getElementById('phone-modal').style.display = 'flex';
+    }, 1500);
+  }
+  startCam();
+});
 </script>
 </body>
 </html>
