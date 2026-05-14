@@ -3,11 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title></title>
+  <title>مطعم ومقهى موريا</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    .site-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .site-logo {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 2px solid #333;
+    }
+    .site-tagline {
+      font-size: 14px;
+      color: #ccc;
+      font-weight: 500;
+    }
     body {
       font-family: 'DM Sans', sans-serif;
       background: #0d0d0d;
@@ -299,6 +318,11 @@
 </head>
 <body>
 <div id="app">
+
+  <header class="site-header">
+    <img src="387762279_233836533012165_721569096618787094_n.jpg" alt="شعار موريا" class="site-logo" />
+    <span class="site-tagline">مطعم ومقهى موريا</span>
+  </header>
 
   <div id="main-layout">
     <div id="cam-wrap">
