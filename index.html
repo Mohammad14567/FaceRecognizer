@@ -326,8 +326,7 @@
       <div class="g-item"><span class="g-icon">🖐</span><div class="g-info"><span class="g-name">كف مفتوح</span><span class="g-desc">عد ٣ ثواني → تصوير</span></div></div>
       <div class="g-item"><span class="g-icon">✌️</span><div class="g-info"><span class="g-name">سلام</span><span class="g-desc">تصوير فوري</span></div></div>
       <div class="g-item"><span class="g-icon">👊</span><div class="g-info"><span class="g-name">قبضة</span><span class="g-desc">إلغاء</span></div></div>
-      <div class="g-item"><span class="g-icon">👍</span><div class="g-info"><span class="g-name">إبهام</span><span class="g-desc">تعيين رقم واتساب</span></div></div>
-      <div class="g-item"><span class="g-icon">☝️</span><div class="g-info"><span class="g-name">إصبع واحد</span><span class="g-desc">مشاركة الصور على واتساب</span></div></div>
+      <div class="g-item"><span class="g-icon">☝️</span><div class="g-info"><span class="g-name">إصبع واحد</span><span class="g-desc">تعيين الرقم / فتح واتساب</span></div></div>
       <div class="g-item" style="border-color:#8b5cf6;background:#1e122e"><span class="g-icon">🎨</span><div class="g-info"><span class="g-name">فلاتر</span><span class="g-desc">اضغط زر الفلاتر أو استخدم الإيماءات</span></div></div>
     </div>
   </div>
@@ -348,7 +347,7 @@
   <div id="phone-modal">
     <div id="phone-modal-content">
       <h2>رقم واتساب</h2>
-      <p>أدخل رقم واتساب مع مفتاح الدولة (أرقام فقط، بدون +). استخدم 👍 لفتح هذه النافذة في أي وقت.</p>
+      <p>أدخل رقم واتساب مع مفتاح الدولة (أرقام فقط، بدون +). استخدم ☝️ لفتح هذه النافذة.</p>
       <input type="tel" id="phone-input" placeholder="مثال: 14155552671" />
       <button id="phone-save" onclick="savePhone()">حفظ</button>
     </div>
@@ -439,7 +438,6 @@ function classifyGesture(lm) {
   if (fingerCount === 4 && thumbOut) return 'open';
   if (fingerCount === 2 && extended[1] && extended[2] && !extended[3] && !extended[4]) return 'peace';
   if (fingerCount === 1 && extended[1]) return 'one';
-  if (fingerCount === 0 && thumbOut) return 'thumbs';
   if (fingerCount === 0) return 'fist';
   return 'none';
 }
@@ -540,7 +538,7 @@ function restartApp() {
   lastGesture = null;
   cdBadge.style.display = 'none';
   if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
-  setStatus('تم إعادة التعيين! استخدم 👍 لتعيين رقمك', 'ready');
+  setStatus('تم إعادة التعيين! استخدم ☝️ لتعيين رقمك', 'ready');
 }
 
 function savePhone() {
@@ -554,23 +552,12 @@ function savePhone() {
   }
 }
 
-async function sharePhotos() {
-  if (photos.length === 0) {
-    setStatus('صور أولاً!', '');
+function sharePhotos() {
+  if (!phoneNumber) {
+    document.getElementById('phone-modal').style.display = 'flex';
     return;
   }
-  if (navigator.share && navigator.canShare) {
-    try {
-      const blobs = await Promise.all(photos.map(url => fetch(url).then(r => r.blob())));
-      const files = blobs.map((blob, i) => new File([blob], `selfie_${i + 1}.jpg`, { type: 'image/jpeg' }));
-      if (navigator.canShare({ files })) {
-        await navigator.share({ files, title: 'صوري', text: 'هذه صوري!' });
-        clearPhotos();
-        return;
-      }
-    } catch (e) {}
-  }
-  if (phoneNumber) location.href = 'https://wa.me/' + phoneNumber;
+  location.href = 'https://wa.me/' + phoneNumber;
 }
 
 function openWhatsApp() {
@@ -602,20 +589,21 @@ function onResults(results) {
           capturePhoto();
         } else if (g === 'fist') {
           setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
-        } else if (g === 'thumbs') {
-          setStatus('👍 إبهام! فتح الإعدادات...', 'gesture');
-          document.getElementById('phone-modal').style.display = 'flex';
         } else if (g === 'one') {
-          setStatus('☝️ مشاركة الصور على واتساب...', 'gesture');
-          capturePhoto();
-          sharePhotos();
+          if (!phoneNumber) {
+            setStatus('☝️ أدخل رقمك أولاً', 'gesture');
+            document.getElementById('phone-modal').style.display = 'flex';
+          } else {
+            setStatus('☝️ فتح واتساب...', 'gesture');
+            capturePhoto();
+            sharePhotos();
+          }
         }
       } else {
         const names = {
           open: '🖐 أمسك الكف ثابتاً...',
           peace: '✌️ أمسك السلام ثابتاً...',
           fist: '👊 قبضة — إلغاء',
-          thumbs: '👍 إبهام — الإعدادات',
           one: '☝️ أمسك الإصبع ثابتاً...'
         };
         setStatus(names[g] || 'تم اكتشاف إيماءة...', 'gesture');
