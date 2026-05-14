@@ -21,23 +21,20 @@
     }
     #app { width: 100%; max-width: 1100px; }
     #main-layout {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr 220px;
       gap: 1rem;
-      align-items: stretch;
     }
     #cam-wrap {
       position: relative;
-      flex: 1;
+      width: 100%;
       aspect-ratio: 16/9;
       background: #1a1a1a;
       border-radius: 16px;
       overflow: hidden;
       border: 1px solid #2a2a2a;
-      min-width: 0;
     }
     #gesture-guide {
-      width: 220px;
-      flex-shrink: 0;
       background: #141414;
       border: 1px solid #2a2a2a;
       border-radius: 16px;
@@ -71,7 +68,7 @@
     @media (max-width: 900px), (hover: none) and (pointer: coarse) {
       body { padding: 0; justify-content: flex-start; }
       #app { max-width: 100%; }
-      #main-layout { flex-direction: column; }
+      #main-layout { grid-template-columns: 1fr; }
       #cam-wrap {
         border-radius: 0;
         border: none;
@@ -81,7 +78,6 @@
       #cam-wrap video, #overlay { border-radius: 0; }
       #flash { border-radius: 0; }
       #gesture-guide {
-        width: 100%;
         border-radius: 0;
         border-left: none;
         border-right: none;
