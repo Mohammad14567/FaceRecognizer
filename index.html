@@ -19,28 +19,79 @@
       justify-content: center;
       padding: 2rem 1rem;
     }
-    #app { width: 100%; max-width: 860px; }
+    #app { width: 100%; max-width: 1100px; }
+    #main-layout {
+      display: flex;
+      gap: 1rem;
+      align-items: stretch;
+    }
     #cam-wrap {
       position: relative;
-      width: 100%;
+      flex: 1;
       aspect-ratio: 16/9;
       background: #1a1a1a;
       border-radius: 16px;
       overflow: hidden;
       border: 1px solid #2a2a2a;
+      min-width: 0;
     }
-    @media (max-width: 768px), (hover: none) and (pointer: coarse) {
+    #gesture-guide {
+      width: 220px;
+      flex-shrink: 0;
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      border-radius: 16px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    #gesture-guide h3 {
+      font-size: 13px;
+      font-weight: 500;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .g-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: #1c1c1c;
+      border: 1px solid #2a2a2a;
+      transition: background 0.15s;
+    }
+    .g-item .g-icon { font-size: 22px; line-height: 1; flex-shrink: 0; }
+    .g-item .g-info { display: flex; flex-direction: column; min-width: 0; }
+    .g-item .g-name { font-size: 13px; font-weight: 500; color: #eee; }
+    .g-item .g-desc { font-size: 11px; color: #777; }
+    @media (max-width: 900px), (hover: none) and (pointer: coarse) {
       body { padding: 0; justify-content: flex-start; }
       #app { max-width: 100%; }
+      #main-layout { flex-direction: column; }
       #cam-wrap {
         border-radius: 0;
         border: none;
         aspect-ratio: auto;
-        height: 100dvh;
+        height: 50dvh;
       }
       #cam-wrap video, #overlay { border-radius: 0; }
       #flash { border-radius: 0; }
-      #gesture-guide, #controls, #photo-result { padding: 0 1rem; }
+      #gesture-guide {
+        width: 100%;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 0.75rem 1rem;
+      }
+      #gesture-guide h3 { display: none; }
+      .g-item { flex: 1; min-width: 140px; }
+      #controls, #photo-result { padding: 0 1rem; }
       #status-bar { padding: 2.5rem 1rem 1.5rem; }
     }
     #cam-wrap video {
@@ -142,6 +193,8 @@
     button:hover { background: #1e1e1e; }
     button:active { transform: scale(0.98); }
     button:disabled { opacity: 0.4; cursor: not-allowed; }
+    #controls { display: flex; }
+    #btn-restart { border-color: #ef4444; color: #ef4444; margin-left: auto; }
     #photo-result {
       display: none;
       margin-top: 1.5rem;
@@ -221,34 +274,40 @@
 <body>
 <div id="app">
 
-  <div id="cam-wrap">
-    <div id="cam-placeholder">
-      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-        <circle cx="12" cy="13" r="4"/>
-      </svg>
-      <p>Requesting camera access...</p>
-    </div>
-    <video id="video" autoplay muted playsinline webkit-playsinline></video>
-    <canvas id="overlay"></canvas>
-    <div id="flash"></div>
-    <div id="countdown-badge" aria-live="assertive"></div>
-    <div id="status-bar">
-      <div id="status-text">
-        <div id="status-dot"></div>
-        <span id="status-msg">Camera off</span>
+  <div id="main-layout">
+    <div id="cam-wrap">
+      <div id="cam-placeholder">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <p>Requesting camera access...</p>
+      </div>
+      <video id="video" autoplay muted playsinline webkit-playsinline></video>
+      <canvas id="overlay"></canvas>
+      <div id="flash"></div>
+      <div id="countdown-badge" aria-live="assertive"></div>
+      <div id="status-bar">
+        <div id="status-text">
+          <div id="status-dot"></div>
+          <span id="status-msg">Camera off</span>
+        </div>
       </div>
     </div>
+
+    <div id="gesture-guide">
+      <h3>الإيماءات</h3>
+      <div class="g-item"><span class="g-icon">🖐</span><div class="g-info"><span class="g-name">كف مفتوح</span><span class="g-desc">عد ٣ ثواني → تصوير</span></div></div>
+      <div class="g-item"><span class="g-icon">✌️</span><div class="g-info"><span class="g-name">سلام</span><span class="g-desc">تصوير فوري</span></div></div>
+      <div class="g-item"><span class="g-icon">👊</span><div class="g-info"><span class="g-name">قبضة</span><span class="g-desc">إلغاء</span></div></div>
+      <div class="g-item"><span class="g-icon">👍</span><div class="g-info"><span class="g-name">إبهام</span><span class="g-desc">تعيين رقم واتساب</span></div></div>
+      <div class="g-item"><span class="g-icon">☝️</span><div class="g-info"><span class="g-name">إصبع واحد</span><span class="g-desc">مشاركة الصور على واتساب</span></div></div>
+    </div>
   </div>
 
-  <div id="gesture-guide">
-    <div class="g-chip"><span>🖐</span> Open palm — 3s countdown</div>
-    <div class="g-chip"><span>✌️</span> Peace sign — instant snap</div>
-    <div class="g-chip"><span>👊</span> Fist — cancel</div>
-    <div class="g-chip"><span>☝️</span> One finger — open WhatsApp</div>
+  <div id="controls">
+    <button id="btn-restart" onclick="restartApp()">⟳ مستخدم جديد</button>
   </div>
-
-  <div id="controls"></div>
 
   <div id="photo-result"></div>
 
@@ -258,10 +317,10 @@
 
   <div id="phone-modal">
     <div id="phone-modal-content">
-      <h2>WhatsApp Number</h2>
-      <p>Enter your WhatsApp number with country code (digits only, no + sign). This will be used when you make the 1-finger gesture.</p>
-      <input type="tel" id="phone-input" placeholder="e.g. 14155552671" />
-      <button id="phone-save" onclick="savePhone()">Save</button>
+      <h2>رقم واتساب</h2>
+      <p>أدخل رقم واتساب مع مفتاح الدولة (أرقام فقط، بدون +). استخدم 👍 لفتح هذه النافذة في أي وقت.</p>
+      <input type="tel" id="phone-input" placeholder="مثال: 14155552671" />
+      <button id="phone-save" onclick="savePhone()">حفظ</button>
     </div>
   </div>
 
@@ -306,6 +365,7 @@ function classifyGesture(lm) {
   if (fingerCount === 4 && thumbOut) return 'open';
   if (fingerCount === 2 && extended[1] && extended[2] && !extended[3] && !extended[4]) return 'peace';
   if (fingerCount === 1 && extended[1]) return 'one';
+  if (fingerCount === 0 && thumbOut) return 'thumbs';
   if (fingerCount === 0) return 'fist';
   return 'none';
 }
@@ -378,12 +438,12 @@ function capturePhoto() {
   item.className = 'photo-item';
   const img = document.createElement('img');
   img.src = dataURL;
-  img.alt = 'Selfie ' + photos.length;
+  img.alt = 'صورة ' + photos.length;
   item.appendChild(img);
   photoResult.appendChild(item);
   photoResult.classList.add('show');
 
-  setStatus('Photo saved! (' + photos.length + ' total)', 'ready');
+  setStatus('تم حفظ الصورة! (' + photos.length + ' إجمالي)', 'ready');
   if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
   setTimeout(() => { snapped = false; }, 800);
 }
@@ -392,7 +452,20 @@ function clearPhotos() {
   photos.length = 0;
   photoResult.innerHTML = '';
   photoResult.classList.remove('show');
-  setStatus('All photos cleared', 'ready');
+  setStatus('تم مسح كل الصور', 'ready');
+}
+
+function restartApp() {
+  clearPhotos();
+  phoneNumber = '';
+  localStorage.removeItem('wa_phone');
+  countingDown = false;
+  snapped = false;
+  gestureHoldFrames = 0;
+  lastGesture = null;
+  cdBadge.style.display = 'none';
+  if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
+  setStatus('تم إعادة التعيين! استخدم 👍 لتعيين رقمك', 'ready');
 }
 
 function savePhone() {
@@ -402,8 +475,27 @@ function savePhone() {
     phoneNumber = val;
     localStorage.setItem('wa_phone', val);
     document.getElementById('phone-modal').style.display = 'none';
-    setStatus('WhatsApp number saved!', 'ready');
+    setStatus('تم حفظ رقم واتساب!', 'ready');
   }
+}
+
+async function sharePhotos() {
+  if (photos.length === 0) {
+    setStatus('صور أولاً!', '');
+    return;
+  }
+  if (navigator.share && navigator.canShare) {
+    try {
+      const blobs = await Promise.all(photos.map(url => fetch(url).then(r => r.blob())));
+      const files = blobs.map((blob, i) => new File([blob], `selfie_${i + 1}.jpg`, { type: 'image/jpeg' }));
+      if (navigator.canShare({ files })) {
+        await navigator.share({ files, title: 'صوري', text: 'هذه صوري!' });
+        clearPhotos();
+        return;
+      }
+    } catch (e) {}
+  }
+  if (phoneNumber) location.href = 'https://wa.me/' + phoneNumber;
 }
 
 function openWhatsApp() {
@@ -428,42 +520,46 @@ function onResults(results) {
       if (gestureHoldFrames >= HOLD_FRAMES) {
         gestureHoldFrames = 0;
         if (g === 'open') {
-          setStatus('Open palm! Starting countdown...', 'gesture');
+          setStatus('🖐 كف مفتوح! بدء العد التنازلي...', 'gesture');
           triggerCountdown(3, capturePhoto);
         } else if (g === 'peace') {
-          setStatus('Peace sign! Snapping now...', 'gesture');
+          setStatus('✌️ سلام! تصوير الآن...', 'gesture');
           capturePhoto();
         } else if (g === 'fist') {
-          setStatus('Show a gesture to take a selfie', 'ready');
+          setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
+        } else if (g === 'thumbs') {
+          setStatus('👍 إبهام! فتح الإعدادات...', 'gesture');
+          document.getElementById('phone-modal').style.display = 'flex';
         } else if (g === 'one') {
-          setStatus('One finger! Opening WhatsApp...', 'gesture');
+          setStatus('☝️ مشاركة الصور على واتساب...', 'gesture');
           capturePhoto();
-          openWhatsApp();
+          sharePhotos();
         }
       } else {
         const names = {
-          open: '🖐 Hold palm still...',
-          peace: '✌️ Hold peace sign...',
-          fist: '👊 Fist — cancel',
-          one: '☝️ Hold one finger...'
+          open: '🖐 أمسك الكف ثابتاً...',
+          peace: '✌️ أمسك السلام ثابتاً...',
+          fist: '👊 قبضة — إلغاء',
+          thumbs: '👍 إبهام — الإعدادات',
+          one: '☝️ أمسك الإصبع ثابتاً...'
         };
-        setStatus(names[g] || 'Gesture detected...', 'gesture');
+        setStatus(names[g] || 'تم اكتشاف إيماءة...', 'gesture');
       }
     } else {
       lastGesture = null;
       gestureHoldFrames = 0;
-      setStatus('Show a gesture to take a selfie', 'ready');
+      setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
     }
   } else {
     if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
     lastGesture = null;
     gestureHoldFrames = 0;
-    setStatus('No hand detected — show your hand to the camera', 'ready');
+    setStatus('لم يتم اكتشاف يد — اعرض يدك للكاميرا', 'ready');
   }
 }
 
 async function startCam() {
-  setStatus('Starting camera...', '');
+  setStatus('جارٍ تشغيل الكاميرا...', '');
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -497,18 +593,13 @@ async function startCam() {
     });
     mpCam.start();
 
-    setStatus('Show a gesture to take a selfie', 'ready');
+    setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
   } catch (e) {
-    setStatus('Camera access denied or unavailable', '');
+    setStatus('تم رفض الوصول إلى الكاميرا أو أنها غير متوفرة', '');
   }
 }
 
 window.addEventListener('load', () => {
-  if (!localStorage.getItem('wa_phone')) {
-    setTimeout(() => {
-      document.getElementById('phone-modal').style.display = 'flex';
-    }, 1500);
-  }
   startCam();
 });
 </script>
