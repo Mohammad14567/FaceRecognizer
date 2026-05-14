@@ -142,16 +142,21 @@
     button:hover { background: #1e1e1e; }
     button:active { transform: scale(0.98); }
     button:disabled { opacity: 0.4; cursor: not-allowed; }
-    #btn-retry { border-color: #f59e0b; color: #f59e0b; }
-
     #photo-result {
       display: none;
       margin-top: 1.5rem;
-      border-radius: 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    #photo-result.show { display: flex; }
+    .photo-item {
+      flex: 1 1 calc(50% - 10px);
+      min-width: 140px;
+      border-radius: 12px;
       overflow: hidden;
       border: 1px solid #2a2a2a;
     }
-    #photo-result img { width: 100%; display: block; }
+    .photo-item img { width: 100%; display: block; }
 
     #no-mediapipe {
       display: none;
@@ -243,13 +248,9 @@
     <div class="g-chip"><span>☝️</span> One finger — open WhatsApp</div>
   </div>
 
-  <div id="controls">
-    <button id="btn-retry" style="display:none" onclick="retake()">Retake</button>
-  </div>
+  <div id="controls"></div>
 
-  <div id="photo-result">
-    <img id="photo-img" src="" alt="Your selfie" />
-  </div>
+  <div id="photo-result"></div>
 
   <div id="no-mediapipe">
     MediaPipe failed to load. Please check your internet connection and reload the page.
@@ -276,8 +277,6 @@ const cdBadge    = document.getElementById('countdown-badge');
 const statusDot  = document.getElementById('status-dot');
 const statusMsg  = document.getElementById('status-msg');
 const photoResult = document.getElementById('photo-result');
-const photoImg   = document.getElementById('photo-img');
-const btnRetry   = document.getElementById('btn-retry');
 const placeholder = document.getElementById('cam-placeholder');
 
 let ctx, handsModel, mpCam;
@@ -285,7 +284,7 @@ let countingDown = false, snapped = false;
 let gestureHoldFrames = 0;
 const HOLD_FRAMES = 18;
 let lastGesture = null;
-let photoDataURL = null;
+const photos = [];
 let phoneNumber = localStorage.getItem('wa_phone') || '';
 
 function setStatus(msg, state) {
@@ -372,22 +371,28 @@ function capturePhoto() {
   sc.drawImage(video, 0, 0);
   sc.restore();
 
-  photoDataURL = snap.toDataURL('image/jpeg', 0.95);
-  photoImg.src = photoDataURL;
-  photoResult.style.display = 'block';
-  btnRetry.style.display = '';
-  setStatus('Photo taken! Retake if needed.', 'ready');
+  const dataURL = snap.toDataURL('image/jpeg', 0.95);
+  photos.push(dataURL);
+
+  const item = document.createElement('div');
+  item.className = 'photo-item';
+  const img = document.createElement('img');
+  img.src = dataURL;
+  img.alt = 'Selfie ' + photos.length;
+  item.appendChild(img);
+  photoResult.appendChild(item);
+  photoResult.classList.add('show');
+
+  setStatus('Photo saved! (' + photos.length + ' total)', 'ready');
   if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
+  setTimeout(() => { snapped = false; }, 800);
 }
 
-function retake() {
-  snapped = false;
-  countingDown = false;
-  gestureHoldFrames = 0;
-  lastGesture = null;
-  photoResult.style.display = 'none';
-  btnRetry.style.display = 'none';
-  setStatus('Show a gesture to take a selfie', 'ready');
+function clearPhotos() {
+  photos.length = 0;
+  photoResult.innerHTML = '';
+  photoResult.classList.remove('show');
+  setStatus('All photos cleared', 'ready');
 }
 
 function savePhone() {
