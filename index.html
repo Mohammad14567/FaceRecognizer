@@ -267,53 +267,7 @@
       font-size: 13px;
     }
 
-    #phone-modal {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.75);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-    }
-    #phone-modal-content {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 16px;
-      padding: 2rem;
-      max-width: 400px;
-      width: 90%;
-    }
-    #phone-modal-content h2 {
-      font-size: 18px;
-      margin-bottom: 8px;
-    }
-    #phone-modal-content p {
-      font-size: 13px;
-      color: #888;
-      margin-bottom: 16px;
-    }
-    #phone-modal-content input {
-      width: 100%;
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: 1px solid #333;
-      background: #0d0d0d;
-      color: #f0f0f0;
-      font-size: 16px;
-      font-family: 'DM Sans', sans-serif;
-      margin-bottom: 12px;
-      outline: none;
-    }
-    #phone-modal-content input:focus { border-color: #4ade80; }
-    #phone-save {
-      width: 100%;
-      background: #4ade80;
-      color: #0d0d0d;
-      border: none;
-      font-weight: 600;
-      justify-content: center;
-    }
-    #phone-save:hover { background: #22c55e; }
+
   </style>
 </head>
 <body>
@@ -368,14 +322,7 @@
     MediaPipe failed to load. Please check your internet connection and reload the page.
   </div>
 
-  <div id="phone-modal">
-    <div id="phone-modal-content">
-      <h2>رقم واتساب</h2>
-      <p>أدخل رقم واتساب مع مفتاح الدولة (أرقام فقط، بدون +). استخدم ☝️ لفتح هذه النافذة.</p>
-      <input type="tel" id="phone-input" placeholder="مثال: 14155552671" />
-      <button id="phone-save" onclick="savePhone()">حفظ</button>
-    </div>
-  </div>
+
 
 </div>
 
@@ -554,42 +501,21 @@ function clearPhotos() {
 
 function restartApp() {
   clearPhotos();
-  phoneNumber = '';
-  localStorage.removeItem('wa_phone');
   countingDown = false;
   snapped = false;
   gestureHoldFrames = 0;
   lastGesture = null;
   cdBadge.style.display = 'none';
   if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
-  setStatus('تم إعادة التعيين! استخدم ☝️ لتعيين رقمك', 'ready');
-}
-
-function savePhone() {
-  const input = document.getElementById('phone-input');
-  const val = input.value.trim().replace(/\D/g, '');
-  if (val) {
-    phoneNumber = val;
-    localStorage.setItem('wa_phone', val);
-    document.getElementById('phone-modal').style.display = 'none';
-    setStatus('تم حفظ رقم واتساب!', 'ready');
-  }
+  setStatus('تم إعادة التعيين!', 'ready');
 }
 
 function sharePhotos() {
-  if (!phoneNumber) {
-    document.getElementById('phone-modal').style.display = 'flex';
-    return;
-  }
-  location.href = 'https://wa.me/' + phoneNumber;
+  location.href = 'https://wa.me/' + (phoneNumber || '');
 }
 
 function openWhatsApp() {
-  if (!phoneNumber) {
-    document.getElementById('phone-modal').style.display = 'flex';
-    return;
-  }
-  location.href = 'https://wa.me/' + phoneNumber;
+  location.href = 'https://wa.me/' + (phoneNumber || '');
 }
 
 function onResults(results) {
@@ -614,14 +540,9 @@ function onResults(results) {
         } else if (g === 'fist') {
           setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
         } else if (g === 'one') {
-          if (!phoneNumber) {
-            setStatus('☝️ أدخل رقمك أولاً', 'gesture');
-            document.getElementById('phone-modal').style.display = 'flex';
-          } else {
-            setStatus('☝️ فتح واتساب...', 'gesture');
-            capturePhoto();
-            sharePhotos();
-          }
+          setStatus('☝️ فتح واتساب...', 'gesture');
+          capturePhoto();
+          sharePhotos();
         }
       } else {
         const names = {
