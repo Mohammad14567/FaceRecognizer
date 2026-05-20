@@ -823,12 +823,15 @@ function onResults(results) {
 }
 
 async function startCam() {
+  console.log('startCam called');
   setStatus('جارٍ تشغيل الكاميرا...', '');
   try {
+    console.log('Requesting camera...');
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false
     });
+    console.log('Camera stream received:', stream);
     video.srcObject = stream;
     video.play();
     placeholder.style.display = 'none';
@@ -859,7 +862,8 @@ async function startCam() {
 
     setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
   } catch (e) {
-    setStatus('تم رفض الوصول إلى الكاميرا أو أنها غير متوفرة', '');
+    console.error('Camera error:', e);
+    setStatus('تم رفض الوصول إلى الكاميرا أو أنها غير متوفرة: ' + e.message, '');
   }
 }
 
