@@ -589,16 +589,17 @@ function dataURLtoBlob(dataUrl) {
   return new Blob([arr], { type: mime });
 }
 
-async function uploadToCatbox(dataUrl) {
+async function uploadImage(dataUrl) {
   const blob = dataURLtoBlob(dataUrl);
   const fd = new FormData();
-  fd.append('reqtype', 'fileupload');
-  fd.append('fileToUpload', blob, `photo_${Date.now()}.jpg`);
-  const response = await fetch('https://catbox.moe/user/api.php', {
+  fd.append('file', blob, `photo_${Date.now()}.jpg`);
+  const response = await fetch('https://telegra.ph/upload', {
     method: 'POST',
     body: fd
   });
-  return response.text();
+  const data = await response.json();
+  if (!data || !data[0] || !data[0].src) throw new Error('فشل الرفع');
+  return 'https://telegra.ph' + data[0].src;
 }
 
 function showQRCard(urls) {
@@ -614,7 +615,7 @@ function showQRCard(urls) {
   });
   document.getElementById('qr-photo-count').textContent = `${urls.length} صورة`;
   document.getElementById('qr-modal-overlay').classList.add('show');
-  setStatus('✅ تم إنشاء رمز QR', 'ready');
+  setStatus('✅ ' + urls.length + ' صورة جاهزة! امسح QR', 'ready');
 }
 
 async function generateQRCode() {
@@ -633,12 +634,13 @@ async function generateQRCode() {
   try {
     const uploadedUrls = [];
     for (let i = 0; i < photos.length; i++) {
-      const url = await uploadToCatbox(photos[i]);
+      setStatus(`📸 جاري رفع الصورة ${i+1}/${photos.length}...`, 'gesture');
+      const url = await uploadImage(photos[i]);
       uploadedUrls.push(url);
     }
     showQRCard(uploadedUrls);
   } catch (e) {
-    setStatus('❌ فشل رفع الصور، حاول مرة أخرى', 'ready');
+    setStatus('❌ فشل رفع الصور: ' + e.message, 'ready');
   }
 }
 
