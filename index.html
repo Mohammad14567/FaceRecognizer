@@ -267,7 +267,7 @@
       font-size: 13px;
     }
 
-    #phone-modal-overlay {
+    #qr-modal-overlay {
       display: none;
       position: fixed;
       inset: 0;
@@ -276,121 +276,53 @@
       align-items: center;
       justify-content: center;
       padding: 1rem;
+      text-align: center;
     }
-    #phone-modal-overlay.show { display: flex; }
-    #phone-modal {
+    #qr-modal-overlay.show { display: flex; }
+    #qr-modal {
       background: #141414;
       border: 1px solid #2a2a2a;
       border-radius: 16px;
       padding: 1.5rem;
       width: 100%;
-      max-width: 360px;
+      max-width: 400px;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     }
-    #phone-modal h2 {
-      font-size: 18px;
+    #qr-modal h2 {
+      font-size: 20px;
       font-weight: 500;
       color: #eee;
       margin-bottom: 0.5rem;
-      text-align: center;
     }
-    #phone-modal p {
+    #qr-modal p {
       font-size: 13px;
       color: #777;
       margin-bottom: 1.25rem;
-      text-align: center;
     }
-    #phone-input {
-      width: 100%;
-      padding: 12px 16px;
-      border-radius: 10px;
-      border: 1px solid #333;
-      background: #1a1a1a;
-      color: #f0f0f0;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px;
-      margin-bottom: 1rem;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    #phone-input:focus {
-      border-color: #8b5cf6;
-    }
-    #phone-input::placeholder {
-      color: #555;
-    }
-    #phone-modal-buttons {
+    #qr-code-wrap {
       display: flex;
-      gap: 10px;
+      justify-content: center;
+      margin-bottom: 1.25rem;
     }
-    #phone-modal-buttons button {
-      flex: 1;
+    #qr-code-wrap img, #qr-code-wrap canvas {
+      border-radius: 12px;
+      border: 3px solid #2a2a2a;
+    }
+    #qr-modal .photo-count {
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 0.25rem;
+    }
+    #btn-close-qr {
+      width: 100%;
       justify-content: center;
       padding: 12px;
-    }
-    #btn-phone-cancel {
-      border-color: #444;
-      color: #999;
-    }
-    #btn-phone-submit {
-      background: #8b5cf6;
       border-color: #8b5cf6;
-      color: #fff;
+      color: #a78bfa;
     }
-    #btn-phone-submit:hover {
-      background: #7c3aed;
+    #btn-close-qr:hover {
+      background: #1e122e;
     }
-
-    #return-to-site {
-      display: none;
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #8b5cf6;
-      color: #fff;
-      padding: 12px 24px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 500;
-      z-index: 200;
-      cursor: pointer;
-      box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
-      animation: slideDown 0.3s ease;
-    }
-    #return-to-site:hover {
-      background: #7c3aed;
-    }
-    @keyframes slideDown {
-      from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
-      to { transform: translateX(-50%) translateY(0); opacity: 1; }
-    }
-
-    #wa-helper {
-      display: none !important;
-      position: fixed;
-      inset: 0;
-      background: #0d0d0d;
-      z-index: 300;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      padding: 2rem;
-      text-align: center;
-    }
-    #wa-helper.show { display: flex !important; }
-    #wa-helper h2 { color: #eee; font-size: 22px; margin-bottom: 8px; }
-    #wa-helper p { color: #888; font-size: 14px; margin-bottom: 16px; }
-    #wa-helper .countdown { font-size: 48px; color: #8b5cf6; font-weight: 600; }
-    #wa-helper button {
-      background: #8b5cf6;
-      border-color: #8b5cf6;
-      color: #fff;
-      font-size: 16px;
-      padding: 14px 32px;
-    }
-    #wa-helper button:hover { background: #7c3aed; }
 
   </style>
 </head>
@@ -428,7 +360,7 @@
       <div class="g-item"><span class="g-icon">🖐</span><div class="g-info"><span class="g-name">كف مفتوح</span><span class="g-desc">عد ٣ ثواني → تصوير</span></div></div>
       <div class="g-item"><span class="g-icon">✌️</span><div class="g-info"><span class="g-name">سلام</span><span class="g-desc">تصوير فوري</span></div></div>
       <div class="g-item"><span class="g-icon">👊</span><div class="g-info"><span class="g-name">قبضة</span><span class="g-desc">إلغاء</span></div></div>
-      <div class="g-item"><span class="g-icon">☝️</span><div class="g-info"><span class="g-name">إصبع واحد</span><span class="g-desc">تعيين الرقم / فتح واتساب</span></div></div>
+      <div class="g-item"><span class="g-icon">☝️</span><div class="g-info"><span class="g-name">إصبع واحد</span><span class="g-desc">إنشاء QR لتحميل الصور</span></div></div>
       <div class="g-item" style="border-color:#8b5cf6;background:#1e122e"><span class="g-icon">🎨</span><div class="g-info"><span class="g-name">فلاتر</span><span class="g-desc">اضغط زر الفلاتر أو استخدم الإيماءات</span></div></div>
     </div>
   </div>
@@ -446,29 +378,19 @@
     MediaPipe failed to load. Please check your internet connection and reload the page.
   </div>
 
-  <div id="phone-modal-overlay">
-    <div id="phone-modal">
-      <h2>📱 أدخل رقم الواتساب</h2>
-      <p>سيتم تحميل الصور تلقائياً ثم فتح الواتساب لإرسالها</p>
-      <input type="tel" id="phone-input" placeholder="مثال: 9665xxxxxxxx" dir="ltr" onkeydown="if(event.key==='Enter')submitPhoneAndOpenWhatsApp();if(event.key==='Escape')closePhoneModal();" />
-      <div id="phone-modal-buttons">
-        <button id="btn-phone-cancel" onclick="closePhoneModal()">إلغاء</button>
-        <button id="btn-phone-submit" onclick="submitPhoneAndOpenWhatsApp()">تحميل وإرسال</button>
-      </div>
+  <div id="qr-modal-overlay">
+    <div id="qr-modal">
+      <h2>📸 مسح QR لتحميل الصور</h2>
+      <p>امسح رمز QR بهاتفك لتحميل جميع الصور</p>
+      <div id="qr-code-wrap"></div>
+      <div class="photo-count" id="qr-photo-count"></div>
+      <button id="btn-close-qr" onclick="closeQRModal()">إغلاق</button>
     </div>
-  </div>
-
-  <div id="return-to-site" onclick="this.style.display='none'">↩️ العودة للموقع</div>
-
-  <div id="wa-helper">
-    <h2>📱 جاري إرسال الصور...</h2>
-    <p>أرسل الصور في الواتساب ثم اضغط العودة</p>
-    <div class="countdown" id="wa-countdown">5</div>
-    <button onclick="returnToCamera()">📸 العودة للكاميرا</button>
   </div>
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script>
@@ -487,7 +409,7 @@ let gestureHoldFrames = 0;
 const HOLD_FRAMES = 18;
 let lastGesture = null;
 const photos = [];
-let phoneNumber = localStorage.getItem('wa_phone') || '';
+
 let activeFilter = 0;
 let filterOpen = false;
 const filterStrip = document.getElementById('filter-strip');
@@ -653,36 +575,8 @@ function restartApp() {
   setStatus('تم إعادة التعيين!', 'ready');
 }
 
-function sharePhotos() {
-  tryWhatsApp(phoneNumber);
-}
-
-function openWhatsApp() {
-  tryWhatsApp(phoneNumber);
-}
-
-function tryWhatsApp(num) {
-  var url = 'https://wa.me/' + (num || '');
-  var appUrl = 'whatsapp://send?phone=' + (num || '');
-  if (navigator.userAgent.indexOf('Windows') !== -1 || navigator.userAgent.indexOf('Mac') !== -1) {
-    location.href = appUrl;
-    setTimeout(function() {
-      if (document.hidden === false) location.href = url;
-    }, 800);
-  } else {
-    location.href = url;
-  }
-}
-
-function promptAndOpenWhatsApp() {
-  document.getElementById('phone-input').value = '';
-  document.getElementById('phone-modal-overlay').classList.add('show');
-  document.getElementById('phone-input').focus();
-}
-
-function closePhoneModal() {
-  document.getElementById('phone-modal-overlay').classList.remove('show');
-  document.getElementById('phone-input').value = '';
+function closeQRModal() {
+  document.getElementById('qr-modal-overlay').classList.remove('show');
   setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
 }
 
@@ -695,9 +589,25 @@ async function uploadToCatbox(dataUrl) {
   return response.text();
 }
 
-async function sendPhotosViaWhatsApp() {
+function showQRCard(urls) {
+  const wrap = document.getElementById('qr-code-wrap');
+  wrap.innerHTML = '';
+  const qr = new QRCode(wrap, {
+    text: urls.join('\n'),
+    width: 240,
+    height: 240,
+    colorDark: '#ffffff',
+    colorLight: '#141414',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+  document.getElementById('qr-photo-count').textContent = `${urls.length} صورة`;
+  document.getElementById('qr-modal-overlay').classList.add('show');
+  setStatus('✅ تم إنشاء رمز QR', 'ready');
+}
+
+async function generateQRCode() {
   if (photos.length === 0) {
-    setStatus('لا توجد صور لإرسالها', 'ready');
+    setStatus('⚠️ التقط الصور أولاً', 'ready');
     return;
   }
   
@@ -709,36 +619,10 @@ async function sendPhotosViaWhatsApp() {
       const url = await uploadToCatbox(photos[i]);
       uploadedUrls.push(url);
     }
-    
-    const message = `📷 صور من مطعم ومقهى موريا:\n\n${uploadedUrls.join('\n')}`;
-    const waUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-    
-    window.open(waUrl, '_blank');
-    
-    setStatus('✅ تم إرسال الروابط للواتساب!', 'ready');
+    showQRCard(uploadedUrls);
   } catch (e) {
-    setStatus('❌ فشل رفع الصور، جاري فتح الواتساب بدونها', 'ready');
-    window.open(`https://wa.me/${phoneNumber}`, '_blank');
+    setStatus('❌ فشل رفع الصور، حاول مرة أخرى', 'ready');
   }
-}
-
-function submitPhoneAndOpenWhatsApp() {
-  const input = document.getElementById('phone-input');
-  let num = input.value.trim().replace(/\s/g, '');
-  if (!num) {
-    input.style.borderColor = '#ef4444';
-    setTimeout(() => { input.style.borderColor = ''; }, 500);
-    return;
-  }
-  if (num.startsWith('0')) {
-    num = '970' + num.substring(1);
-  }
-  if (!num.startsWith('+')) {
-    num = '+' + num;
-  }
-  phoneNumber = num.replace(/\D/g, '');
-  closePhoneModal();
-  sendPhotosViaWhatsApp();
 }
 
 function onResults(results) {
@@ -763,8 +647,8 @@ function onResults(results) {
         } else if (g === 'fist') {
           setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
         } else if (g === 'one') {
-          setStatus('☝️ فتح واتساب...', 'gesture');
-          promptAndOpenWhatsApp();
+          setStatus('☝️ إنشاء رمز QR...', 'gesture');
+          generateQRCode();
         }
       } else {
         const names = {
@@ -789,15 +673,12 @@ function onResults(results) {
 }
 
 async function startCam() {
-  console.log('startCam called');
   setStatus('جارٍ تشغيل الكاميرا...', '');
   try {
-    console.log('Requesting camera...');
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false
     });
-    console.log('Camera stream received:', stream);
     video.srcObject = stream;
     video.play();
     placeholder.style.display = 'none';
@@ -828,8 +709,7 @@ async function startCam() {
 
     setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
   } catch (e) {
-    console.error('Camera error:', e);
-    setStatus('تم رفض الوصول إلى الكاميرا أو أنها غير متوفرة: ' + e.message, '');
+    setStatus('تم رفض الوصول إلى الكاميرا أو أنها غير متوفرة', '');
   }
 }
 
@@ -838,72 +718,6 @@ window.addEventListener('load', () => {
   startCam();
 });
 
-let openedWhatsApp = false;
-let waCountdownInterval;
-
-function showWhatsAppHelper() {
-  const helper = document.getElementById('wa-helper');
-  const countdown = document.getElementById('wa-countdown');
-  helper.classList.add('show');
-  
-  let seconds = 5;
-  countdown.textContent = seconds;
-  
-  waCountdownInterval = setInterval(() => {
-    seconds--;
-    countdown.textContent = seconds;
-    if (seconds <= 0) {
-      clearInterval(waCountdownInterval);
-      countdown.textContent = '✓';
-    }
-  }, 1000);
-}
-
-function hideWhatsAppHelper() {
-  document.getElementById('wa-helper').classList.remove('show');
-  clearInterval(waCountdownInterval);
-}
-
-function returnToCamera() {
-  hideWhatsAppHelper();
-  setStatus('👋 أهلاً بعودتك! التقط المزيد من الصور', 'ready');
-}
-
-function sendPhotosViaWhatsApp() {
-  openedWhatsApp = true;
-  if (photos.length === 0) {
-    setStatus('لا توجد صور لإرسالها', 'ready');
-    return;
-  }
-  
-  setStatus('📸 جاري رفع الصور...', 'gesture');
-  
-  showWhatsAppHelper();
-  
-  try {
-    const uploadedUrls = [];
-    for (let i = 0; i < photos.length; i++) {
-      const url = await uploadToCatbox(photos[i]);
-      uploadedUrls.push(url);
-    }
-    
-    const message = `📷 صور من مطعم ومقهى موريا:\n\n${uploadedUrls.join('\n')}`;
-    const waUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-    
-    window.open(waUrl, '_blank');
-    
-    setStatus('✅ تم إرسال الروابط للواتساب!', 'ready');
-  } catch (e) {
-    setStatus('❌ فشل رفع الصور، جاري فتح الواتساب بدونها', 'ready');
-    window.open(`https://wa.me/${phoneNumber}`, '_blank');
-  }
-}
-
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && openedWhatsApp) {
-    document.getElementById('return-to-site').style.display = 'block';
-  }
-});
 </script>
 </body>
 </html>
