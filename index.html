@@ -341,6 +341,57 @@
       background: #7c3aed;
     }
 
+    #return-to-site {
+      display: none;
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #8b5cf6;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 200;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+      animation: slideDown 0.3s ease;
+    }
+    #return-to-site:hover {
+      background: #7c3aed;
+    }
+    @keyframes slideDown {
+      from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+      to { transform: translateX(-50%) translateY(0); opacity: 1; }
+    }
+
+    #wa-helper {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0d0d0d;
+      z-index: 300;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 2rem;
+      text-align: center;
+    }
+    #wa-helper.show { display: flex; }
+    #wa-helper h2 { color: #eee; font-size: 22px; margin-bottom: 8px; }
+    #wa-helper p { color: #888; font-size: 14px; margin-bottom: 16px; }
+    #wa-helper .countdown { font-size: 48px; color: #8b5cf6; font-weight: 600; }
+    #wa-helper button {
+      background: #8b5cf6;
+      border-color: #8b5cf6;
+      color: #fff;
+      font-size: 16px;
+      padding: 14px 32px;
+    }
+    #wa-helper button:hover { background: #7c3aed; }
+
   </style>
 </head>
 <body>
@@ -405,6 +456,15 @@
         <button id="btn-phone-submit" onclick="submitPhoneAndOpenWhatsApp()">تحميل وإرسال</button>
       </div>
     </div>
+  </div>
+
+  <div id="return-to-site" onclick="this.style.display='none'">↩️ العودة للموقع</div>
+
+  <div id="wa-helper">
+    <h2>📱 جاري إرسال الصور...</h2>
+    <p>أرسل الصور في الواتساب ثم اضغط العودة</p>
+    <div class="countdown" id="wa-countdown">5</div>
+    <button onclick="returnToCamera()">📸 العودة للكاميرا</button>
   </div>
 
 </div>
@@ -652,19 +712,13 @@ async function sendPhotosViaWhatsApp() {
     
     const message = `📷 صور من مطعم ومقهى موريا:\n\n${uploadedUrls.join('\n')}`;
     const waUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-    const appUrl = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
     
-    if (navigator.userAgent.indexOf('Windows') !== -1 || navigator.userAgent.indexOf('Mac') !== -1) {
-      location.href = appUrl;
-      setTimeout(() => { if (document.hidden === false) location.href = waUrl; }, 800);
-    } else {
-      location.href = waUrl;
-    }
+    window.open(waUrl, '_blank');
     
     setStatus('✅ تم إرسال الروابط للواتساب!', 'ready');
   } catch (e) {
     setStatus('❌ فشل رفع الصور، جاري فتح الواتساب بدونها', 'ready');
-    setTimeout(() => tryWhatsApp(phoneNumber), 1000);
+    window.open(`https://wa.me/${phoneNumber}`, '_blank');
   }
 }
 
@@ -812,6 +866,73 @@ async function startCam() {
 window.addEventListener('load', () => {
   buildFilterStrip();
   startCam();
+});
+
+let openedWhatsApp = false;
+let waCountdownInterval;
+
+function showWhatsAppHelper() {
+  const helper = document.getElementById('wa-helper');
+  const countdown = document.getElementById('wa-countdown');
+  helper.classList.add('show');
+  
+  let seconds = 5;
+  countdown.textContent = seconds;
+  
+  waCountdownInterval = setInterval(() => {
+    seconds--;
+    countdown.textContent = seconds;
+    if (seconds <= 0) {
+      clearInterval(waCountdownInterval);
+      countdown.textContent = '✓';
+    }
+  }, 1000);
+}
+
+function hideWhatsAppHelper() {
+  document.getElementById('wa-helper').classList.remove('show');
+  clearInterval(waCountdownInterval);
+}
+
+function returnToCamera() {
+  hideWhatsAppHelper();
+  setStatus('👋 أهلاً بعودتك! التقط المزيد من الصور', 'ready');
+}
+
+function sendPhotosViaWhatsApp() {
+  openedWhatsApp = true;
+  if (photos.length === 0) {
+    setStatus('لا توجد صور لإرسالها', 'ready');
+    return;
+  }
+  
+  setStatus('📸 جاري رفع الصور...', 'gesture');
+  
+  showWhatsAppHelper();
+  
+  try {
+    const uploadedUrls = [];
+    for (let i = 0; i < photos.length; i++) {
+      const url = await uploadToCatbox(photos[i]);
+      uploadedUrls.push(url);
+    }
+    
+    const message = `📷 صور من مطعم ومقهى موريا:\n\n${uploadedUrls.join('\n')}`;
+    const waUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    
+    window.open(waUrl, '_blank');
+    
+    setStatus('✅ تم إرسال الروابط للواتساب!', 'ready');
+  } catch (e) {
+    setStatus('❌ فشل رفع الصور، جاري فتح الواتساب بدونها', 'ready');
+    window.open(`https://wa.me/${phoneNumber}`, '_blank');
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && openedWhatsApp) {
+    document.getElementById('return-to-site').style.display = 'block';
+  }
 });
 </script>
 </body>
