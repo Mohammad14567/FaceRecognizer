@@ -267,6 +267,79 @@
       font-size: 13px;
     }
 
+    #phone-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    #phone-modal-overlay.show { display: flex; }
+    #phone-modal {
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      border-radius: 16px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+    #phone-modal h2 {
+      font-size: 18px;
+      font-weight: 500;
+      color: #eee;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+    #phone-modal p {
+      font-size: 13px;
+      color: #777;
+      margin-bottom: 1.25rem;
+      text-align: center;
+    }
+    #phone-input {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #f0f0f0;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      margin-bottom: 1rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #phone-input:focus {
+      border-color: #8b5cf6;
+    }
+    #phone-input::placeholder {
+      color: #555;
+    }
+    #phone-modal-buttons {
+      display: flex;
+      gap: 10px;
+    }
+    #phone-modal-buttons button {
+      flex: 1;
+      justify-content: center;
+      padding: 12px;
+    }
+    #btn-phone-cancel {
+      border-color: #444;
+      color: #999;
+    }
+    #btn-phone-submit {
+      background: #8b5cf6;
+      border-color: #8b5cf6;
+      color: #fff;
+    }
+    #btn-phone-submit:hover {
+      background: #7c3aed;
+    }
 
   </style>
 </head>
@@ -322,7 +395,17 @@
     MediaPipe failed to load. Please check your internet connection and reload the page.
   </div>
 
-
+  <div id="phone-modal-overlay">
+    <div id="phone-modal">
+      <h2>📱 أدخل رقم الواتساب</h2>
+      <p>أدخل رقمك مع مفتاح الدولة لإرسال الصور</p>
+      <input type="tel" id="phone-input" placeholder="مثال: 9665xxxxxxxx" dir="ltr" onkeydown="if(event.key==='Enter')submitPhoneAndOpenWhatsApp();if(event.key==='Escape')closePhoneModal();" />
+      <div id="phone-modal-buttons">
+        <button id="btn-phone-cancel" onclick="closePhoneModal()">إلغاء</button>
+        <button id="btn-phone-submit" onclick="submitPhoneAndOpenWhatsApp()">فتح واتساب</button>
+      </div>
+    </div>
+  </div>
 
 </div>
 
@@ -532,14 +615,768 @@ function tryWhatsApp(num) {
 }
 
 function promptAndOpenWhatsApp() {
-  var num = localStorage.getItem('wa_phone') || '';
+  document.getElementById('phone-input').value = '';
+  document.getElementById('phone-modal-overlay').classList.add('show');
+  document.getElementById('phone-input').focus();
+}
+
+function closePhoneModal() {
+  document.getElementById('phone-modal-overlay').classList.remove('show');
+  document.getElementById('phone-input').value = '';
+  setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
+}
+
+function submitPhoneAndOpenWhatsApp() {
+  const input = document.getElementById('phone-input');
+  const num = input.value.trim();
   if (!num) {
-    num = prompt('أدخل رقم الهاتف مع مفتاح الدولة (مثال: 9665xxxxxxxx):');
-    if (!num) return;
-    localStorage.setItem('wa_phone', num);
+    input.style.borderColor = '#ef4444';
+    setTimeout(() => { input.style.borderColor = ''; }, 500);
+    return;
   }
+  localStorage.setItem('wa_phone', num);
   phoneNumber = num;
-  tryWhatsApp(num);
+  closePhoneModal();
+  setStatus('📱 جاري فتح واتساب...', 'gesture');
+  setTimeout(() => tryWhatsApp(num), 300);
+}
+
+function onResults(results) {
+  if (snapped || countingDown) return;
+  overlay.width  = video.videoWidth  || 640;
+  overlay.height = video.videoHeight || 360;
+  const lm = results.multiHandLandmarks?.[0];
+  if (lm) {
+    drawLandmarks(lm);
+    const g = classifyGesture(lm);
+    if (g !== 'none') {
+      if (g === lastGesture) gestureHoldFrames++;
+      else { gestureHoldFrames = 0; lastGesture = g; }
+      if (gestureHoldFrames >= HOLD_FRAMES) {
+        gestureHoldFrames = 0;
+        if (g === 'open') {
+          setStatus('🖐 كف مفتوح! بدء العد التنازلي...', 'gesture');
+          triggerCountdown(3, capturePhoto);
+        } else if (g === 'peace') {
+          setStatus('✌️ سلام! تصوير الآن...', 'gesture');
+          capturePhoto();
+        } else if (g === 'fist') {
+          setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
+        } else if (g === 'one') {
+          setStatus('☝️ فتح واتساب...', 'gesture');
+          promptAndOpenWhatsApp();
+        }
+      } else {
+        const names = {
+          open: '🖐 أمسك الكف ثابتاً...',
+          peace: '✌️ أمسك السلام ثابتاً...',
+          fist: '👊 قبضة — إلغاء',
+          one: '☝️ أمسك الإصبع ثابتاً...'
+        };
+        setStatus(names[g] || 'تم اكتشاف إيماءة...', 'gesture');
+      }
+    } else {
+      lastGesture = null;
+      gestureHoldFrames = 0;
+      setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
+    }
+  } else {
+    if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
+    lastGesture = null;
+    gestureHoldFrames = 0;
+    setStatus('لم يتم اكتشاف يد — اعرض يدك للكاميرا', 'ready');
+  }
+}
+
+async function startCam() {
+  setStatus('جارٍ تشغيل الكاميرا...', '');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    video.srcObject = stream;
+    video.play();
+    placeholder.style.display = 'none';
+    ctx = overlay.getContext('2d');
+
+    if (typeof Hands === 'undefined') {
+      document.getElementById('no-mediapipe').style.display = '';
+      return;
+    }
+
+    handsModel = new Hands({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+    });
+    handsModel.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.7,
+      minTrackingConfidence: 0.6
+    });
+    handsModel.onResults(onResults);
+
+    mpCam = new Camera(video, {
+      onFrame: async () => { await handsModel.send({ image: video }); },
+      width: 1280,
+      height: 720
+    });
+    mpCam.start();
+
+    setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
+  } catch (e) {
+    setStatus('تم رفض الوصول إلى الكاميرا أو أنها غير متوفرة', '');
+  }
+}
+
+window.addEventListener('load', () => {
+  buildFilterStrip();
+  startCam();
+});
+</script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مطعم ومقهى موريا</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    .site-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .site-logo {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 2px solid #333;
+    }
+    .site-tagline {
+      font-size: 14px;
+      color: #ccc;
+      font-weight: 500;
+    }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #0d0d0d;
+      color: #f0f0f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    #app { width: 100%; max-width: 1100px; }
+    #main-layout {
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 1rem;
+    }
+    #cam-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #1a1a1a;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #2a2a2a;
+    }
+    #gesture-guide {
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      border-radius: 16px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    #gesture-guide h3 {
+      font-size: 13px;
+      font-weight: 500;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .g-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: #1c1c1c;
+      border: 1px solid #2a2a2a;
+      transition: background 0.15s;
+    }
+    .g-item .g-icon { font-size: 22px; line-height: 1; flex-shrink: 0; }
+    .g-item .g-info { display: flex; flex-direction: column; min-width: 0; }
+    .g-item .g-name { font-size: 13px; font-weight: 500; color: #eee; }
+    .g-item .g-desc { font-size: 11px; color: #777; }
+    @media (max-width: 900px), (hover: none) and (pointer: coarse) {
+      body { padding: 0; justify-content: flex-start; }
+      #app { max-width: 100%; }
+      #main-layout { grid-template-columns: 1fr; }
+      #cam-wrap {
+        border-radius: 0;
+        border: none;
+        aspect-ratio: auto;
+        height: 50dvh;
+      }
+      #cam-wrap video, #overlay { border-radius: 0; }
+      #flash { border-radius: 0; }
+      #gesture-guide {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 0.75rem 1rem;
+      }
+      #gesture-guide h3 { display: none; }
+      .g-item { flex: 1; min-width: 140px; }
+      #controls, #photo-result, #filter-strip { padding: 0 1rem; }
+      #filter-strip { border-radius: 0; border-left: none; border-right: none; margin-top: 0; }
+      #status-bar { padding: 2.5rem 1rem 1.5rem; }
+    }
+    #cam-wrap video {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+    #overlay {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+    #flash {
+      position: absolute; inset: 0;
+      background: #fff;
+      opacity: 0;
+      z-index: 10;
+      pointer-events: none;
+      border-radius: 16px;
+      transition: opacity 0.05s;
+    }
+    #countdown-badge {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 120px;
+      color: #fff;
+      text-shadow: 0 4px 24px rgba(0,0,0,0.7);
+      z-index: 8;
+      display: none;
+      pointer-events: none;
+      line-height: 1;
+    }
+    #status-bar {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.75));
+      padding: 2rem 1.25rem 1rem;
+      z-index: 5;
+      pointer-events: none;
+    }
+    #status-text {
+      font-size: 14px;
+      color: #fff;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #555;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    #status-dot.ready  { background: #4ade80; }
+    #status-dot.gesture { background: #f59e0b; animation: pulse-dot 0.6s infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    #cam-placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; z-index: 1;
+    }
+    #cam-placeholder svg { opacity: 0.3; }
+    #cam-placeholder p { font-size: 14px; color: #666; }
+
+    #controls {
+      display: flex; gap: 10px; margin-top: 1.25rem; flex-wrap: wrap;
+    }
+    button {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 500;
+      padding: 10px 22px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: transparent;
+      color: #f0f0f0;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    button:hover { background: #1e1e1e; }
+    button:active { transform: scale(0.98); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    #controls { display: flex; flex-wrap: wrap; }
+    #btn-restart { border-color: #ef4444; color: #ef4444; margin-left: auto; }
+    #btn-filters { border-color: #8b5cf6; color: #a78bfa; }
+    #btn-filters.on { background: #8b5cf6; color: #fff; border-color: #8b5cf6; }
+    #filter-strip {
+      display: none;
+      gap: 8px;
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      border-radius: 14px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    #filter-strip.show { display: flex; }
+    .f-opt {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      transition: border-color 0.15s;
+      background: #1c1c1c;
+      min-width: 64px;
+    }
+    .f-opt:hover { border-color: #444; }
+    .f-opt.active { border-color: #8b5cf6; background: #1e122e; }
+    .f-preview {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: #2a2a2a;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      border: 1px solid #333;
+    }
+    .f-opt .f-name { font-size: 10px; color: #999; white-space: nowrap; }
+    #photo-result {
+      display: none;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    #photo-result.show { display: flex; }
+    .photo-item {
+      flex: 1 1 calc(50% - 10px);
+      min-width: 140px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #2a2a2a;
+    }
+    .photo-item img { width: 100%; display: block; }
+
+    #no-mediapipe {
+      display: none;
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #1e1a0e;
+      border: 1px solid #78350f;
+      border-radius: 8px;
+      color: #fbbf24;
+      font-size: 13px;
+    }
+
+    #phone-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    #phone-modal-overlay.show { display: flex; }
+    #phone-modal {
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      border-radius: 16px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+    #phone-modal h2 {
+      font-size: 18px;
+      font-weight: 500;
+      color: #eee;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+    #phone-modal p {
+      font-size: 13px;
+      color: #777;
+      margin-bottom: 1.25rem;
+      text-align: center;
+    }
+    #phone-input {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #f0f0f0;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      margin-bottom: 1rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #phone-input:focus {
+      border-color: #8b5cf6;
+    }
+    #phone-input::placeholder {
+      color: #555;
+    }
+    #phone-modal-buttons {
+      display: flex;
+      gap: 10px;
+    }
+    #phone-modal-buttons button {
+      flex: 1;
+      justify-content: center;
+      padding: 12px;
+    }
+    #btn-phone-cancel {
+      border-color: #444;
+      color: #999;
+    }
+    #btn-phone-submit {
+      background: #8b5cf6;
+      border-color: #8b5cf6;
+      color: #fff;
+    }
+    #btn-phone-submit:hover {
+      background: #7c3aed;
+    }
+
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <header class="site-header">
+    <img src="387762279_233836533012165_721569096618787094_n.jpg" alt="شعار موريا" class="site-logo" />
+    <span class="site-tagline">مطعم ومقهى موريا</span>
+  </header>
+
+  <div id="main-layout">
+    <div id="cam-wrap">
+      <div id="cam-placeholder">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <p>Requesting camera access...</p>
+      </div>
+      <video id="video" autoplay muted playsinline webkit-playsinline></video>
+      <canvas id="overlay"></canvas>
+      <div id="flash"></div>
+      <div id="countdown-badge" aria-live="assertive"></div>
+      <div id="status-bar">
+        <div id="status-text">
+          <div id="status-dot"></div>
+          <span id="status-msg">Camera off</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="gesture-guide">
+      <h3>الإيماءات</h3>
+      <div class="g-item"><span class="g-icon">🖐</span><div class="g-info"><span class="g-name">كف مفتوح</span><span class="g-desc">عد ٣ ثواني → تصوير</span></div></div>
+      <div class="g-item"><span class="g-icon">✌️</span><div class="g-info"><span class="g-name">سلام</span><span class="g-desc">تصوير فوري</span></div></div>
+      <div class="g-item"><span class="g-icon">👊</span><div class="g-info"><span class="g-name">قبضة</span><span class="g-desc">إلغاء</span></div></div>
+      <div class="g-item"><span class="g-icon">☝️</span><div class="g-info"><span class="g-name">إصبع واحد</span><span class="g-desc">تعيين الرقم / فتح واتساب</span></div></div>
+      <div class="g-item" style="border-color:#8b5cf6;background:#1e122e"><span class="g-icon">🎨</span><div class="g-info"><span class="g-name">فلاتر</span><span class="g-desc">اضغط زر الفلاتر أو استخدم الإيماءات</span></div></div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button id="btn-filters" onclick="toggleFilters()">🎨 فلاتر</button>
+    <button id="btn-restart" onclick="restartApp()">⟳ مستخدم جديد</button>
+  </div>
+
+  <div id="filter-strip"></div>
+
+  <div id="photo-result"></div>
+
+  <div id="no-mediapipe">
+    MediaPipe failed to load. Please check your internet connection and reload the page.
+  </div>
+
+  <div id="phone-modal-overlay">
+    <div id="phone-modal">
+      <h2>📱 أدخل رقم الواتساب</h2>
+      <p>أدخل رقمك مع مفتاح الدولة لإرسال الصور</p>
+      <input type="tel" id="phone-input" placeholder="مثال: 9665xxxxxxxx" dir="ltr" onkeydown="if(event.key==='Enter')submitPhoneAndOpenWhatsApp();if(event.key==='Escape')closePhoneModal();" />
+      <div id="phone-modal-buttons">
+        <button id="btn-phone-cancel" onclick="closePhoneModal()">إلغاء</button>
+        <button id="btn-phone-submit" onclick="submitPhoneAndOpenWhatsApp()">فتح واتساب</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script>
+const video      = document.getElementById('video');
+const overlay    = document.getElementById('overlay');
+const flash      = document.getElementById('flash');
+const cdBadge    = document.getElementById('countdown-badge');
+const statusDot  = document.getElementById('status-dot');
+const statusMsg  = document.getElementById('status-msg');
+const photoResult = document.getElementById('photo-result');
+const placeholder = document.getElementById('cam-placeholder');
+
+let ctx, handsModel, mpCam;
+let countingDown = false, snapped = false;
+let gestureHoldFrames = 0;
+const HOLD_FRAMES = 18;
+let lastGesture = null;
+const photos = [];
+let phoneNumber = localStorage.getItem('wa_phone') || '';
+let activeFilter = 0;
+let filterOpen = false;
+const filterStrip = document.getElementById('filter-strip');
+const btnFilters = document.getElementById('btn-filters');
+const FILTERS = [
+  { name: 'عادي', css: 'none' },
+  { name: 'رمادي', css: 'grayscale(1)' },
+  { name: 'سيبيا', css: 'sepia(1)' },
+  { name: 'قديم', css: 'sepia(0.5) contrast(1.3) brightness(0.85)' },
+  { name: 'بارد', css: 'hue-rotate(180deg) saturate(0.8) contrast(1.1)' },
+  { name: 'درامي', css: 'contrast(1.6) brightness(0.8) saturate(1.3)' },
+  { name: 'ناعم', css: 'brightness(1.15) blur(0.8px) contrast(0.9)' },
+  { name: 'نيون', css: 'hue-rotate(300deg) saturate(2) brightness(1.1)' },
+];
+
+function applyFilterCSS(el) {
+  el.style.filter = FILTERS[activeFilter].css;
+}
+
+function buildFilterStrip() {
+  FILTERS.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'f-opt' + (i === 0 ? ' active' : '');
+    div.innerHTML = `<div class="f-preview" style="filter:${f.css}">◉</div><span class="f-name">${f.name}</span>`;
+    div.onclick = () => setFilter(i);
+    filterStrip.appendChild(div);
+  });
+}
+
+function toggleFilters() {
+  filterOpen = !filterOpen;
+  filterStrip.classList.toggle('show', filterOpen);
+  btnFilters.classList.toggle('on', filterOpen);
+}
+
+function setFilter(i) {
+  activeFilter = i;
+  filterStrip.querySelectorAll('.f-opt').forEach((el, idx) => {
+    el.classList.toggle('active', idx === i);
+  });
+  applyFilterCSS(video);
+  applyFilterCSS(overlay);
+  setStatus('الفلتر: ' + FILTERS[i].name, 'ready');
+}
+
+function setStatus(msg, state) {
+  statusMsg.textContent = msg;
+  statusDot.className = '';
+  if (state) statusDot.classList.add(state);
+}
+
+function classifyGesture(lm) {
+  if (!lm || lm.length < 21) return 'none';
+  const tips = [4, 8, 12, 16, 20];
+  const mids = [3, 6, 10, 14, 18];
+  const extended = tips.map((t, i) => {
+    if (i === 0) return lm[t].x < lm[mids[i]].x;
+    return lm[t].y < lm[mids[i]].y;
+  });
+  const fingerCount = extended.slice(1).filter(Boolean).length;
+  const thumbOut = extended[0];
+  if (fingerCount === 4 && thumbOut) return 'open';
+  if (fingerCount === 2 && extended[1] && extended[2] && !extended[3] && !extended[4]) return 'peace';
+  if (fingerCount === 1 && extended[1]) return 'one';
+  if (fingerCount === 0) return 'fist';
+  return 'none';
+}
+
+function drawLandmarks(lm) {
+  if (!ctx || !lm) return;
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  const w = overlay.width, h = overlay.height;
+  const connections = [
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [5,9],[9,10],[10,11],[11,12],
+    [9,13],[13,14],[14,15],[15,16],
+    [13,17],[17,18],[18,19],[19,20],[0,17]
+  ];
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 2;
+  for (const [a, b] of connections) {
+    ctx.beginPath();
+    ctx.moveTo((1 - lm[a].x) * w, lm[a].y * h);
+    ctx.lineTo((1 - lm[b].x) * w, lm[b].y * h);
+    ctx.stroke();
+  }
+  for (const p of lm) {
+    ctx.beginPath();
+    ctx.arc((1 - p.x) * w, p.y * h, 5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(245,158,11,0.9)';
+    ctx.fill();
+  }
+}
+
+function triggerCountdown(seconds, onDone) {
+  if (countingDown) return;
+  countingDown = true;
+  cdBadge.style.display = 'block';
+  let s = seconds;
+  const tick = () => {
+    if (s <= 0) {
+      cdBadge.style.display = 'none';
+      countingDown = false;
+      onDone();
+      return;
+    }
+    cdBadge.textContent = s;
+    s--;
+    setTimeout(tick, 900);
+  };
+  tick();
+}
+
+function capturePhoto() {
+  snapped = true;
+  flash.style.opacity = 1;
+  setTimeout(() => { flash.style.opacity = 0; }, 140);
+
+  const snap = document.createElement('canvas');
+  snap.width  = video.videoWidth  || 1280;
+  snap.height = video.videoHeight || 720;
+  const sc = snap.getContext('2d');
+  sc.save();
+  sc.translate(snap.width, 0);
+  sc.scale(-1, 1);
+  sc.filter = FILTERS[activeFilter].css;
+  sc.drawImage(video, 0, 0);
+  sc.restore();
+
+  const dataURL = snap.toDataURL('image/jpeg', 0.95);
+  photos.push(dataURL);
+
+  const item = document.createElement('div');
+  item.className = 'photo-item';
+  const img = document.createElement('img');
+  img.src = dataURL;
+  img.alt = 'صورة ' + photos.length;
+  item.appendChild(img);
+  photoResult.appendChild(item);
+  photoResult.classList.add('show');
+
+  setStatus('تم حفظ الصورة! (' + photos.length + ' إجمالي)', 'ready');
+  if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
+  setTimeout(() => { snapped = false; }, 800);
+}
+
+function clearPhotos() {
+  photos.length = 0;
+  photoResult.innerHTML = '';
+  photoResult.classList.remove('show');
+  setStatus('تم مسح كل الصور', 'ready');
+}
+
+function restartApp() {
+  clearPhotos();
+  countingDown = false;
+  snapped = false;
+  gestureHoldFrames = 0;
+  lastGesture = null;
+  cdBadge.style.display = 'none';
+  if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
+  setStatus('تم إعادة التعيين!', 'ready');
+}
+
+function sharePhotos() {
+  tryWhatsApp(phoneNumber);
+}
+
+function openWhatsApp() {
+  tryWhatsApp(phoneNumber);
+}
+
+function tryWhatsApp(num) {
+  var url = 'https://wa.me/' + (num || '');
+  var appUrl = 'whatsapp://send?phone=' + (num || '');
+  if (navigator.userAgent.indexOf('Windows') !== -1 || navigator.userAgent.indexOf('Mac') !== -1) {
+    location.href = appUrl;
+    setTimeout(function() {
+      if (document.hidden === false) location.href = url;
+    }, 800);
+  } else {
+    location.href = url;
+  }
+}
+
+function promptAndOpenWhatsApp() {
+  document.getElementById('phone-input').value = '';
+  document.getElementById('phone-modal-overlay').classList.add('show');
+  document.getElementById('phone-input').focus();
+}
+
+function closePhoneModal() {
+  document.getElementById('phone-modal-overlay').classList.remove('show');
+  document.getElementById('phone-input').value = '';
+  setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
+}
+
+function submitPhoneAndOpenWhatsApp() {
+  const input = document.getElementById('phone-input');
+  const num = input.value.trim();
+  if (!num) {
+    input.style.borderColor = '#ef4444';
+    setTimeout(() => { input.style.borderColor = ''; }, 500);
+    return;
+  }
+  localStorage.setItem('wa_phone', num);
+  phoneNumber = num;
+  closePhoneModal();
+  setStatus('📱 جاري فتح واتساب...', 'gesture');
+  setTimeout(() => tryWhatsApp(num), 300);
 }
 
 function onResults(results) {
