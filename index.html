@@ -511,11 +511,35 @@ function restartApp() {
 }
 
 function sharePhotos() {
-  location.href = 'https://wa.me/' + (phoneNumber || '');
+  tryWhatsApp(phoneNumber);
 }
 
 function openWhatsApp() {
-  location.href = 'https://wa.me/' + (phoneNumber || '');
+  tryWhatsApp(phoneNumber);
+}
+
+function tryWhatsApp(num) {
+  var url = 'https://wa.me/' + (num || '');
+  var appUrl = 'whatsapp://send?phone=' + (num || '');
+  if (navigator.userAgent.indexOf('Windows') !== -1 || navigator.userAgent.indexOf('Mac') !== -1) {
+    location.href = appUrl;
+    setTimeout(function() {
+      if (document.hidden === false) location.href = url;
+    }, 800);
+  } else {
+    location.href = url;
+  }
+}
+
+function promptAndOpenWhatsApp() {
+  var num = localStorage.getItem('wa_phone') || '';
+  if (!num) {
+    num = prompt('أدخل رقم الهاتف مع مفتاح الدولة (مثال: 9665xxxxxxxx):');
+    if (!num) return;
+    localStorage.setItem('wa_phone', num);
+  }
+  phoneNumber = num;
+  tryWhatsApp(num);
 }
 
 function onResults(results) {
@@ -541,8 +565,7 @@ function onResults(results) {
           setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
         } else if (g === 'one') {
           setStatus('☝️ فتح واتساب...', 'gesture');
-          capturePhoto();
-          sharePhotos();
+          promptAndOpenWhatsApp();
         }
       } else {
         const names = {
