@@ -740,40 +740,6 @@ function submitPhoneAndOpenWhatsApp() {
   closePhoneModal();
   sendPhotosViaWhatsApp();
 }
-  
-  setStatus('📥 جاري تحميل الصور...', 'gesture');
-  
-  photos.forEach((dataUrl, i) => {
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = `moria-photo-${i + 1}.jpg`;
-    link.click();
-  });
-  
-  setTimeout(() => {
-    setStatus('📱 جاري فتح واتساب لإرسال الصور...', 'gesture');
-    tryWhatsApp(phoneNumber);
-  }, 1500);
-}
-
-function submitPhoneAndOpenWhatsApp() {
-  const input = document.getElementById('phone-input');
-  let num = input.value.trim().replace(/\s/g, '');
-  if (!num) {
-    input.style.borderColor = '#ef4444';
-    setTimeout(() => { input.style.borderColor = ''; }, 500);
-    return;
-  }
-  if (num.startsWith('0')) {
-    num = '970' + num.substring(1);
-  }
-  if (!num.startsWith('+')) {
-    num = '+' + num;
-  }
-  phoneNumber = num.replace(/\D/g, '');
-  closePhoneModal();
-  sendPhotosViaWhatsApp();
-}
 
 function onResults(results) {
   if (snapped || countingDown) return;
