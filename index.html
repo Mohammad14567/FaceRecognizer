@@ -1,720 +1,854 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>مطعم ومقهى موريا</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      height: 100%; overflow: hidden;
-      font-family: 'DM Sans', sans-serif;
-      background: #0d0d0d;
-      color: #f0f0f0;
-    }
-    #app { width: 100vw; height: 100vh; position: relative; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📸 Moria Photo Booth</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,300&display=swap" rel="stylesheet">
 
-    #cam-wrap {
-      position: absolute; inset: 0;
-      background: #000;
-      overflow: hidden;
-    }
-    #cam-wrap video {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-      object-fit: cover;
-      transform: scaleX(-1);
-    }
-    #overlay {
-      position: absolute; inset: 0;
-      pointer-events: none; z-index: 2;
-    }
-    #flash {
-      position: absolute; inset: 0;
-      background: #fff; opacity: 0;
-      z-index: 10; pointer-events: none;
-      transition: opacity 0.05s;
-    }
-    #countdown-badge {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 120px; color: #fff;
-      text-shadow: 0 4px 24px rgba(0,0,0,0.7);
-      z-index: 8; display: none;
-      pointer-events: none; line-height: 1;
-    }
-    #status-bar {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      background: linear-gradient(transparent, rgba(0,0,0,0.75));
-      padding: 3rem 1.5rem 1.5rem; z-index: 5;
-      pointer-events: none;
-    }
-    #status-text {
-      font-size: 15px; color: #fff; font-weight: 500;
-      display: flex; align-items: center; gap: 8px;
-    }
-    #status-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: #555; flex-shrink: 0;
-      transition: background 0.3s;
-    }
-    #status-dot.ready  { background: #4ade80; }
-    #status-dot.gesture { background: #f59e0b; animation: pulse-dot 0.6s infinite; }
-    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.3} }
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
-    #cam-placeholder {
-      position: absolute; inset: 0;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 12px; z-index: 1;
-    }
-    #cam-placeholder svg { opacity: 0.3; }
-    #cam-placeholder p { font-size: 14px; color: #666; }
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    #no-mediapipe {
-      display: none;
-      margin-top: 1rem;
-      padding: 1rem;
-      background: #1e1a0e;
-      border: 1px solid #78350f;
-      border-radius: 8px;
-      color: #fbbf24;
-      font-size: 13px;
-    }
+  :root {
+    --amber: #fbbf24;
+    --amber-dim: rgba(251,191,36,0.35);
+    --purple: #a855f7;
+    --purple-dim: rgba(168,85,247,0.12);
+    --bg: #0d0d0d;
+    --white: #ffffff;
+    --green: #22c55e;
+    --orange: #f97316;
+    --red: #ef4444;
+  }
 
-    #photo-result {
-      display: none;
-      position: fixed; bottom: 80px; left: 50%;
-      transform: translateX(-50%);
-      gap: 10px; z-index: 20;
-      direction: ltr;
-    }
-    #photo-result.show { display: flex; }
-    .photo-item {
-      width: 60px; height: 60px;
-      border-radius: 10px; overflow: hidden;
-      border: 2px solid rgba(255,255,255,0.3);
-      flex-shrink: 0;
-    }
-    .photo-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    font-family: 'DM Sans', sans-serif;
+    color: var(--white);
+  }
 
-    /* === Gesture Guide (top-middle) === */
-    #gesture-guide {
-      position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-      z-index: 20;
-      background: rgba(10,10,10,0.92);
-      -webkit-backdrop-filter: blur(12px);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 14px;
-      padding: 10px 14px;
-      display: flex; flex-direction: row; gap: 8px;
-      width: auto; max-width: 94vw;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-    }
-    .g-item {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 14px;
-      border-radius: 10px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.06);
-      transition: transform 0.6s cubic-bezier(0.34,1.56,0.64,1), background 0.6s, border-color 0.6s, box-shadow 0.6s;
-      transform: scale(0.92);
-    }
-    .g-item:hover { background: rgba(255,255,255,0.12); }
-    .g-item.focused {
-      transform: scale(1.08);
-      background: rgba(255,255,255,0.14);
-      border-color: rgba(255,255,255,0.2);
-      box-shadow: 0 0 20px rgba(255,255,255,0.06);
-    }
-    .g-item .g-icon { font-size: 26px; flex-shrink: 0; transition: transform 0.6s cubic-bezier(0.34,1.56,0.64,1); }
-    .g-item.focused .g-icon { transform: scale(1.15); }
-    .g-item .g-label { display: flex; flex-direction: column; }
-    .g-item .g-name { font-size: 13px; font-weight: 600; color: #f0f0f0; white-space: nowrap; }
-    .g-item .g-desc { font-size: 10px; color: #aaa; white-space: nowrap; }
-    @media (max-width: 767px) {
-      #gesture-guide { top: 14px; gap: 5px; padding: 8px 10px; }
-      .g-item { gap: 5px; padding: 5px 8px; }
-      .g-item .g-icon { font-size: 18px; }
-      .g-item .g-name { font-size: 10px; }
-      .g-item .g-desc { font-size: 8px; }
-      #status-bar { padding: 2rem 1rem 1rem; }
-      #status-text { font-size: 13px; }
-      #photo-result { bottom: 60px; }
-      .photo-item { width: 48px; height: 48px; }
-      #countdown-badge { font-size: 80px; }
-    }
-    @media (min-width: 768px) and (max-width: 1024px) {
-      #countdown-badge { font-size: 140px; }
-    }
-    @media (orientation: landscape) and (max-height: 500px) {
-      #gesture-guide { top: 8px; gap: 4px; padding: 6px 8px; }
-      .g-item { padding: 4px 6px; gap: 4px; }
-      .g-item .g-icon { font-size: 14px; }
-      .g-item .g-name { font-size: 9px; }
-      .g-item .g-desc { font-size: 8px; }
-      #photo-result { bottom: 50px; }
-    }
+  /* ─── VIDEO ─── */
+  #video {
+    position: fixed;
+    inset: 0;
+    width: 100vw; height: 100vh;
+    object-fit: cover;
+    transform: scaleX(-1);
+    z-index: 0;
+  }
 
-    /* === QR Card === */
-    #qr-card {
-      display: none; position: fixed; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(20,20,20,0.92);
-      -webkit-backdrop-filter: blur(12px);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(139,92,246,0.2);
-      border-radius: 20px; padding: 1.5rem;
-      width: calc(100% - 2rem); max-width: 360px;
-      z-index: 100; text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-    }
-    #qr-card.show { display: block; }
-    #qr-card h2 { font-size: 18px; font-weight: 500; color: #eee; margin-bottom: 0.3rem; }
-    #qr-card p { font-size: 13px; color: #888; margin-bottom: 1rem; }
-    #qr-code-wrap { display: flex; justify-content: center; margin-bottom: 1rem; }
-    #qr-code-wrap img, #qr-code-wrap canvas {
-      border-radius: 12px; border: 2px solid #2a2a2a;
-    }
-    #qr-card .photo-count { font-size: 11px; color: #555; margin-bottom: 0.25rem; }
-    #btn-close-qr {
-      font-family: 'DM Sans', sans-serif;
-      font-size: 13px; font-weight: 500;
-      padding: 10px 20px;
-      border-radius: 8px; border: 1px solid #555;
-      background: transparent; color: #aaa;
-      cursor: pointer;
-      width: 100%;
-    }
-    #btn-close-qr:hover { background: rgba(255,255,255,0.05); }
+  /* ─── CANVAS ─── */
+  #overlay {
+    position: fixed;
+    inset: 0;
+    width: 100vw; height: 100vh;
+    pointer-events: none;
+    z-index: 1;
+  }
 
-  </style>
+  /* ─── FLASH ─── */
+  #flash {
+    position: fixed;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 50;
+    transition: opacity 80ms ease;
+  }
+  #flash.active { opacity: 1; }
+
+  /* ─── GESTURE GUIDE ─── */
+  #gesture-guide {
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 8px;
+    background: rgba(13,13,13,0.72);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 10px 14px;
+  }
+
+  .gesture-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    border-radius: 14px;
+    transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.4s ease, opacity 0.4s ease;
+    transform: scale(0.92);
+    opacity: 0.75;
+    min-width: 68px;
+  }
+
+  .gesture-item.active-hint {
+    transform: scale(1.08);
+    opacity: 1;
+    box-shadow: 0 0 18px 4px rgba(255,255,255,0.18);
+  }
+
+  .gesture-icon {
+    font-size: 26px;
+    line-height: 1;
+  }
+
+  .gesture-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.7);
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* ─── COUNTDOWN ─── */
+  #countdown {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 20;
+    width: 120px; height: 120px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(13,13,13,0.85);
+    border: 3px solid var(--amber);
+    box-shadow: 0 0 40px rgba(251,191,36,0.4);
+    font-size: 64px;
+    font-weight: 700;
+    color: var(--amber);
+  }
+  #countdown.visible { display: flex; }
+
+  /* ─── STATUS BAR ─── */
+  #status-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px 16px;
+    background: linear-gradient(to top, rgba(13,13,13,0.9) 0%, transparent 100%);
+  }
+
+  .status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .status-dot.gesture {
+    background: var(--orange);
+    box-shadow: 0 0 8px var(--orange);
+    animation: pulse-dot 0.8s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.7); }
+  }
+
+  #status-text {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.06em;
+    font-weight: 400;
+  }
+
+  /* ─── THUMBNAILS ─── */
+  #thumbnails {
+    position: fixed;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .thumb {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.3);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    transition: transform 0.2s;
+  }
+  .thumb:hover { transform: scale(1.15); }
+
+  /* ─── PHOTO COUNT ─── */
+  #photo-count {
+    position: fixed;
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: rgba(13,13,13,0.7);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    display: none;
+  }
+
+  /* ─── QR CARD ─── */
+  #qr-card {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13,13,13,0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  #qr-card.visible { display: flex; }
+
+  .qr-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 28px;
+    padding: 36px 40px;
+    max-width: 320px;
+    width: 90%;
+  }
+
+  .qr-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-align: center;
+  }
+
+  .qr-subtitle {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+  }
+
+  #qr-container {
+    background: white;
+    border-radius: 16px;
+    padding: 14px;
+    width: 200px; height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #qr-loading {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+  }
+
+  .qr-close-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: white;
+    border-radius: 12px;
+    padding: 10px 28px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    pointer-events: all;
+  }
+  .qr-close-btn:hover { background: rgba(255,255,255,0.14); }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 767px) {
+    #gesture-guide { padding: 8px 10px; gap: 4px; }
+    .gesture-item { padding: 6px 8px; min-width: 56px; }
+    .gesture-icon { font-size: 20px; }
+    .gesture-label { font-size: 9px; }
+  }
+
+  @media (min-width: 768px) and (max-width: 1024px) {
+    .gesture-icon { font-size: 30px; }
+  }
+
+  @media (max-height: 500px) and (orientation: landscape) {
+    #gesture-guide { top: 8px; padding: 6px 10px; }
+    .gesture-item { padding: 4px 8px; }
+    .gesture-icon { font-size: 18px; }
+    #status-bar { padding: 8px 16px 10px; }
+    .thumb { width: 36px; height: 36px; }
+    #thumbnails { bottom: 40px; }
+  }
+</style>
 </head>
 <body>
-<div id="app">
 
-  <div id="cam-wrap">
-    <div id="cam-placeholder">
-      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-        <circle cx="12" cy="13" r="4"/>
-      </svg>
-      <p>Requesting camera access...</p>
-    </div>
-    <video id="video" autoplay muted playsinline webkit-playsinline x-webkit-airplay="allow" disablePictureInPicture></video>
-    <canvas id="overlay"></canvas>
-    <div id="flash"></div>
-    <div id="countdown-badge" aria-live="assertive"></div>
-    <div id="status-bar">
-      <div id="status-text">
-        <div id="status-dot"></div>
-        <span id="status-msg">Camera off</span>
-      </div>
-    </div>
+<video id="video" playsinline autoplay muted></video>
+<canvas id="overlay"></canvas>
+<div id="flash"></div>
+
+<!-- Gesture Guide -->
+<div id="gesture-guide">
+  <div class="gesture-item" data-idx="0">
+    <span class="gesture-icon">🖐</span>
+    <span class="gesture-label">Palm → 3s</span>
   </div>
-
-  <div id="gesture-guide">
-    <div class="g-item">
-      <span class="g-icon">🖐</span>
-      <div class="g-label"><span class="g-name">كف مفتوح</span><span class="g-desc">عد ٣ ثواني → تصوير</span></div>
-    </div>
-    <div class="g-item">
-      <span class="g-icon">✌️</span>
-      <div class="g-label"><span class="g-name">سلام</span><span class="g-desc">تصوير فوري</span></div>
-    </div>
-    <div class="g-item">
-      <span class="g-icon">👊</span>
-      <div class="g-label"><span class="g-name">قبضة</span><span class="g-desc">إلغاء</span></div>
-    </div>
-    <div class="g-item">
-      <span class="g-icon">👍</span>
-      <div class="g-label"><span class="g-name">إبهام للأعلى</span><span class="g-desc">إنشاء QR لتحميل الصور</span></div>
-    </div>
+  <div class="gesture-item" data-idx="1">
+    <span class="gesture-icon">✌️</span>
+    <span class="gesture-label">فوري</span>
   </div>
-
-  <div id="photo-result"></div>
-
-  <div id="no-mediapipe">
-    MediaPipe failed to load. Please check your internet connection and reload the page.
+  <div class="gesture-item" data-idx="2">
+    <span class="gesture-icon">👊</span>
+    <span class="gesture-label">إلغاء</span>
   </div>
-
-  <div id="qr-card">
-    <h2>📸 مسح QR لتحميل الصور</h2>
-    <p>امسح QR بهاتفك — افتح كل صورة واضغط زر التحميل</p>
-    <div id="qr-code-wrap"></div>
-    <div class="photo-count" id="qr-photo-count"></div>
-    <button id="btn-close-qr" onclick="closeQRModal()">إغلاق</button>
+  <div class="gesture-item" data-idx="3">
+    <span class="gesture-icon">👍</span>
+    <span class="gesture-label">QR كود</span>
   </div>
-
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-5niY7cY6Dw/F7eYc2dcFqd8WDuhQXmBwY8IsYOdgIF7V/P/Y0b+1lzqIYaErwLxaG6xE1BF96vy66pSl7r5LJQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<!-- Countdown -->
+<div id="countdown"></div>
+
+<!-- Photo count -->
+<div id="photo-count"></div>
+
+<!-- Thumbnails -->
+<div id="thumbnails"></div>
+
+<!-- Status bar -->
+<div id="status-bar">
+  <div class="status-dot" id="status-dot"></div>
+  <div id="status-text">جاهز</div>
+  <div style="width:10px"></div>
+</div>
+
+<!-- QR Card -->
+<div id="qr-card">
+  <div class="qr-inner">
+    <div class="qr-title">📸 صورك جاهزة!</div>
+    <div class="qr-subtitle">امسح رمز QR لتحميل الصور</div>
+    <div id="qr-container">
+      <div id="qr-loading">جارٍ الرفع...</div>
+    </div>
+    <button class="qr-close-btn" onclick="closeQR()">إغلاق</button>
+  </div>
+</div>
+
 <script>
-const video      = document.getElementById('video');
-const overlay    = document.getElementById('overlay');
-const flash      = document.getElementById('flash');
-const cdBadge    = document.getElementById('countdown-badge');
-const statusDot  = document.getElementById('status-dot');
-const statusMsg  = document.getElementById('status-msg');
-const photoResult = document.getElementById('photo-result');
-const placeholder = document.getElementById('cam-placeholder');
-
-let ctx, handsModel, faceModel, mpCam;
-let faceDetections = [];
-let focusIdx = 0;
-let focusTimer = null;
-let countingDown = false, snapped = false;
-let gestureHoldFrames = 0;
-const HOLD_FRAMES = 18;
-let lastGesture = null;
+// ─── STATE ───────────────────────────────────────
 const photos = [];
+let gestureHoldCount = 0;
+let lastGesture = null;
+let countdownInterval = null;
+let countdownValue = 3;
+let pendingGesture = null;
+let hintIndex = 0;
+let isCapturing = false;
+let qrVisible = false;
 
+const HOLD_THRESHOLD = 18;
 
+// DOM
+const video    = document.getElementById('video');
+const overlay  = document.getElementById('overlay');
+const ctx      = overlay.getContext('2d');
+const flash    = document.getElementById('flash');
+const cdEl     = document.getElementById('countdown');
+const statusDot = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const thumbsEl = document.getElementById('thumbnails');
+const photoCount = document.getElementById('photo-count');
+const qrCard   = document.getElementById('qr-card');
+const qrContainer = document.getElementById('qr-container');
+const qrLoading = document.getElementById('qr-loading');
+const gestureItems = document.querySelectorAll('.gesture-item');
 
-function setStatus(msg, state) {
-  statusMsg.textContent = msg;
-  statusDot.className = '';
-  if (state) statusDot.classList.add(state);
-}
-
-function classifyGesture(lm) {
-  if (!lm || lm.length < 21) return 'none';
-  const tips = [4, 8, 12, 16, 20];
-  const mids = [3, 6, 10, 14, 18];
-  const extended = tips.map((t, i) => {
-    if (i === 0) return lm[t].x < lm[mids[i]].x;
-    return lm[t].y < lm[mids[i]].y;
+// ─── GESTURE HINT ROTATION ────────────────────────
+function rotateHint() {
+  gestureItems.forEach((el, i) => {
+    el.classList.toggle('active-hint', i === hintIndex);
   });
-  const fingerCount = extended.slice(1).filter(Boolean).length;
-  const thumbOut = extended[0];
-  if (fingerCount === 4 && thumbOut) return 'open';
-  if (fingerCount === 2 && extended[1] && extended[2] && !extended[3] && !extended[4]) return 'peace';
-  if (thumbOut && fingerCount === 0) return 'thumbsup';
-  if (fingerCount === 0) return 'fist';
-  return 'none';
+  hintIndex = (hintIndex + 1) % gestureItems.length;
 }
+rotateHint();
+setInterval(rotateHint, 4000);
 
+// ─── CANVAS RESIZE ───────────────────────────────
+function resizeCanvas() {
+  overlay.width  = overlay.clientWidth;
+  overlay.height = overlay.clientHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ─── VIDEO RECT ──────────────────────────────────
 function videoRect() {
-  const vw = video.videoWidth, vh = video.videoHeight;
-  const cw = overlay.width, ch = overlay.height;
-  const vA = vw / vh, cA = cw / ch;
-  let dw, dh, dx, dy;
-  if (vA > cA) { dh = ch; dw = dh * vA; dx = (cw - dw) / 2; dy = 0; }
-  else { dw = cw; dh = dw / vA; dx = 0; dy = (ch - dh) / 2; }
-  return { x: dx, y: dy, w: dw, h: dh };
+  const vw = overlay.clientWidth;
+  const vh = overlay.clientHeight;
+  const videoAR = video.videoWidth / (video.videoHeight || 1);
+  const canvasAR = vw / vh;
+  let visibleW, visibleH, offsetX = 0, offsetY = 0;
+  if (videoAR > canvasAR) {
+    visibleH = vh;
+    visibleW = vh * videoAR;
+    offsetX = (vw - visibleW) / 2;
+  } else {
+    visibleW = vw;
+    visibleH = vw / videoAR;
+    offsetY = (vh - visibleH) / 2;
+  }
+  return { visibleW, visibleH, offsetX, offsetY };
 }
 
-function focusItem(idx) {
-  const items = document.querySelectorAll('.g-item');
-  items.forEach((el, i) => el.classList.toggle('focused', i === idx));
-  focusIdx = idx;
+// ─── DRAWING HELPERS ─────────────────────────────
+const HAND_CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,4],
+  [5,6],[6,7],[7,8],
+  [9,10],[10,11],[11,12],
+  [13,14],[14,15],[15,16],
+  [17,18],[18,19],[19,20],
+  [0,5],[5,9],[9,13],[13,17],[0,17]
+];
+
+function lm(landmarks, idx, vr) {
+  const p = landmarks[idx];
+  return {
+    x: (1 - p.x) * vr.visibleW + vr.offsetX,
+    y: p.y * vr.visibleH + vr.offsetY
+  };
 }
 
-function startFocusCycle() {
-  stopFocusCycle();
-  focusItem(0);
-  focusTimer = setInterval(() => focusItem((focusIdx + 1) % document.querySelectorAll('.g-item').length), 4000);
-}
-
-function stopFocusCycle() {
-  if (focusTimer) { clearInterval(focusTimer); focusTimer = null; }
-}
-
-function drawLandmarks(lm) {
-  if (!ctx || !lm) return;
-  const v = videoRect();
-  const connections = [
-    [0,1],[1,2],[2,3],[3,4],
-    [0,5],[5,6],[6,7],[7,8],
-    [5,9],[9,10],[10,11],[11,12],
-    [9,13],[13,14],[14,15],[15,16],
-    [13,17],[17,18],[18,19],[19,20],[0,17]
-  ];
-  
-  ctx.save();
-  ctx.shadowColor = 'rgba(245,158,11,0.3)';
-  ctx.shadowBlur = 8;
-  ctx.strokeStyle = 'rgba(245,158,11,0.35)';
+function drawHand(landmarks) {
+  const vr = videoRect();
+  // connections
+  ctx.strokeStyle = 'rgba(251,191,36,0.35)';
   ctx.lineWidth = 1.5;
-  for (const [a, b] of connections) {
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = '#fbbf24';
+  for (const [a, b] of HAND_CONNECTIONS) {
+    const pa = lm(landmarks, a, vr);
+    const pb = lm(landmarks, b, vr);
     ctx.beginPath();
-    ctx.moveTo((1 - lm[a].x) * v.w + v.x, lm[a].y * v.h + v.y);
-    ctx.lineTo((1 - lm[b].x) * v.w + v.x, lm[b].y * v.h + v.y);
+    ctx.moveTo(pa.x, pa.y);
+    ctx.lineTo(pb.x, pb.y);
     ctx.stroke();
   }
-  ctx.restore();
-
-  ctx.shadowColor = 'rgba(245,158,11,0.6)';
-  ctx.shadowBlur = 12;
-  for (const p of lm) {
+  // dots
+  for (let i = 0; i < landmarks.length; i++) {
+    const p = lm(landmarks, i, vr);
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = '#fbbf24';
     ctx.beginPath();
-    ctx.arc((1 - p.x) * v.w + v.x, p.y * v.h + v.y, 3, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
     ctx.fillStyle = '#fbbf24';
+    ctx.fill();
+    // white center
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = 'white';
     ctx.fill();
   }
   ctx.shadowBlur = 0;
-  for (const p of lm) {
-    ctx.beginPath();
-    ctx.arc((1 - p.x) * v.w + v.x, p.y * v.h + v.y, 1.5, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff';
-    ctx.fill();
-  }
 }
 
-function roundRect(ctx, x, y, w, h, r) {
-  if (typeof ctx.roundRect === 'function') { ctx.roundRect(x, y, w, h, r); return; }
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-}
-
-function drawFaces(detections) {
-  if (!ctx || !detections) return;
-  const v = videoRect();
-  for (const d of detections) {
-    const box = d.boundingBox;
-    const x = (1 - box.xMin - box.width) * v.w + v.x;
-    const y = box.yMin * v.h + v.y;
-    const bw = box.width * v.w;
-    const bh = box.height * v.h;
-    ctx.save();
-    ctx.shadowColor = 'rgba(139,92,246,0.3)';
+function drawFace(detections) {
+  const vr = videoRect();
+  for (const det of detections) {
+    const bb = det.boundingBox;
+    if (!bb) continue;
+    const x  = (1 - bb.xCenter - bb.width / 2) * vr.visibleW + vr.offsetX;
+    const y  = (bb.yCenter - bb.height / 2) * vr.visibleH + vr.offsetY;
+    const w  = bb.width  * vr.visibleW;
+    const h  = bb.height * vr.visibleH;
+    const r  = 12;
+    // outer glow
     ctx.shadowBlur = 18;
-    ctx.strokeStyle = 'rgba(139,92,246,0.4)';
+    ctx.shadowColor = '#a855f7';
+    ctx.strokeStyle = '#a855f7';
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    roundRect(ctx, x - 4, y - 4, bw + 8, bh + 8, 12);
+    roundRect(ctx, x, y, w, h, r);
     ctx.stroke();
-    ctx.restore();
-    ctx.save();
-    ctx.shadowColor = 'rgba(139,92,246,0.1)';
-    ctx.shadowBlur = 24;
-    ctx.strokeStyle = 'rgba(139,92,246,0.12)';
+    // inner ring
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(168,85,247,0.12)';
     ctx.lineWidth = 5;
-    ctx.beginPath();
-    roundRect(ctx, x - 4, y - 4, bw + 8, bh + 8, 12);
+    roundRect(ctx, x+2, y+2, w-4, h-4, r);
     ctx.stroke();
-    ctx.restore();
-
-    if (d.landmarks) {
-      for (const lp of d.landmarks) {
-        const px = (1 - lp.x) * v.w + v.x, py = lp.y * v.h + v.y;
-        ctx.save();
-        ctx.shadowColor = 'rgba(139,92,246,0.5)';
-        ctx.shadowBlur = 10;
+    // keypoints
+    if (det.landmarks) {
+      for (const kp of det.landmarks) {
+        const kx = (1 - kp.x) * vr.visibleW + vr.offsetX;
+        const ky = kp.y * vr.visibleH + vr.offsetY;
         ctx.beginPath();
-        ctx.arc(px, py, 2.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#a78bfa';
+        ctx.arc(kx, ky, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#a855f7';
         ctx.fill();
-        ctx.restore();
         ctx.beginPath();
-        ctx.arc(px, py, 1.2, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff';
+        ctx.arc(kx, ky, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
         ctx.fill();
       }
     }
   }
+  ctx.shadowBlur = 0;
 }
 
-function triggerCountdown(seconds, onDone) {
-  if (countingDown) return;
-  countingDown = true;
-  cdBadge.style.display = 'block';
-  let s = seconds;
-  const tick = () => {
-    if (s <= 0) {
-      cdBadge.style.display = 'none';
-      countingDown = false;
-      onDone();
-      return;
-    }
-    cdBadge.textContent = s;
-    s--;
-    setTimeout(tick, 900);
-  };
-  tick();
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.lineTo(x + w - r, y);
+  c.quadraticCurveTo(x + w, y, x + w, y + r);
+  c.lineTo(x + w, y + h - r);
+  c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  c.lineTo(x + r, y + h);
+  c.quadraticCurveTo(x, y + h, x, y + h - r);
+  c.lineTo(x, y + r);
+  c.quadraticCurveTo(x, y, x + r, y);
+  c.closePath();
 }
 
+// ─── GESTURE CLASSIFICATION ───────────────────────
+function classifyGesture(lms) {
+  const fingerTips  = [8, 12, 16, 20];
+  const fingerMids  = [6, 10, 14, 18];
+  const thumbTip    = lms[4];
+  const thumbBase   = lms[2];
+
+  const fingersUp = fingerTips.map((tip, i) => lms[tip].y < lms[fingerMids[i]].y);
+  const thumbOut  = thumbTip.x < thumbBase.x; // mirrored
+
+  const allFingersUp = fingersUp.every(Boolean);
+  if (allFingersUp && thumbOut) return 'open';
+
+  const peaceUp = fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3];
+  if (peaceUp && !thumbOut) return 'peace';
+
+  const allDown = fingersUp.every(f => !f);
+  if (allDown && thumbOut) return 'thumbsup';
+
+  if (allDown && !thumbOut) return 'fist';
+
+  return null;
+}
+
+// ─── STATUS ──────────────────────────────────────
+function setStatus(text, isGesture = false) {
+  statusText.textContent = text;
+  statusDot.classList.toggle('gesture', isGesture);
+}
+
+// ─── PHOTO CAPTURE ───────────────────────────────
 function capturePhoto() {
-  snapped = true;
-  flash.style.opacity = 1;
-  setTimeout(() => { flash.style.opacity = 0; }, 140);
+  if (isCapturing) return;
+  isCapturing = true;
 
-  const snap = document.createElement('canvas');
-  snap.width  = video.videoWidth  || 1280;
-  snap.height = video.videoHeight || 720;
-  const sc = snap.getContext('2d');
-  sc.save();
-  sc.translate(snap.width, 0);
-  sc.scale(-1, 1);
-  sc.drawImage(video, 0, 0);
-  sc.restore();
+  // Flash
+  flash.classList.add('active');
+  setTimeout(() => flash.classList.remove('active'), 100);
 
-  const dataURL = snap.toDataURL('image/jpeg', 0.95);
-  photos.push(dataURL);
+  // Draw frame to offscreen canvas
+  const fc = document.createElement('canvas');
+  fc.width  = video.videoWidth  || 1280;
+  fc.height = video.videoHeight || 720;
+  const fx = fc.getContext('2d');
+  fx.translate(fc.width, 0);
+  fx.scale(-1, 1);
+  fx.drawImage(video, 0, 0, fc.width, fc.height);
 
-  const item = document.createElement('div');
-  item.className = 'photo-item';
+  const dataUrl = fc.toDataURL('image/jpeg', 0.92);
+  photos.push(dataUrl);
+  addThumbnail(dataUrl);
+  updatePhotoCount();
+  setStatus(`📸 صورة ${photos.length}`, false);
+
+  setTimeout(() => { isCapturing = false; }, 800);
+}
+
+function addThumbnail(dataUrl) {
   const img = document.createElement('img');
-  img.src = dataURL;
-  img.alt = 'صورة ' + photos.length;
-  item.appendChild(img);
-  photoResult.appendChild(item);
-  photoResult.classList.add('show');
-
-  setStatus('تم حفظ الصورة! (' + photos.length + ' إجمالي)', 'ready');
-  if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
-  setTimeout(() => { snapped = false; }, 800);
+  img.className = 'thumb';
+  img.src = dataUrl;
+  thumbsEl.appendChild(img);
+  if (thumbsEl.children.length > 8) {
+    thumbsEl.removeChild(thumbsEl.firstChild);
+  }
 }
 
-function clearPhotos() {
-  photos.length = 0;
-  photoResult.innerHTML = '';
-  photoResult.classList.remove('show');
-  setStatus('تم مسح كل الصور', 'ready');
+function updatePhotoCount() {
+  if (photos.length > 0) {
+    photoCount.style.display = 'block';
+    photoCount.textContent = `${photos.length} صورة`;
+  }
 }
 
-function restartApp() {
-  clearPhotos();
-  countingDown = false;
-  snapped = false;
-  gestureHoldFrames = 0;
-  lastGesture = null;
-  cdBadge.style.display = 'none';
-  if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
-  setStatus('تم إعادة التعيين!', 'ready');
+// ─── COUNTDOWN ───────────────────────────────────
+function startCountdown() {
+  if (countdownInterval) return;
+  countdownValue = 3;
+  cdEl.textContent = countdownValue;
+  cdEl.classList.add('visible');
+  countdownInterval = setInterval(() => {
+    countdownValue--;
+    if (countdownValue <= 0) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+      cdEl.classList.remove('visible');
+      capturePhoto();
+    } else {
+      cdEl.textContent = countdownValue;
+    }
+  }, 1000);
 }
 
-function closeQRModal() {
-  document.getElementById('qr-card').classList.remove('show');
+function cancelCountdown() {
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+    cdEl.classList.remove('visible');
+  }
 }
 
-
-
-function dataURLtoBlob(d) {
-  const p = d.split(','), m = p[0].match(/:(.*?);/)[1], b = atob(p[1]);
-  const a = new Uint8Array(b.length);
-  for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i);
-  return new Blob([a], { type: m });
-}
-
-function fetchWithTimeout(url, opt, ms) {
-  const c = new AbortController();
-  const id = setTimeout(() => c.abort(), ms || 8000);
-  return fetch(url, { ...opt, signal: c.signal }).then(r => { clearTimeout(id); return r; }).catch(e => { clearTimeout(id); throw e; });
-}
-
-async function uploadFile(dataUrl) {
-  const fd = new FormData();
-  fd.append('file', dataURLtoBlob(dataUrl), 'p.jpg');
-  const r = await fetchWithTimeout('https://telegra.ph/upload', { method: 'POST', body: fd });
-  const d = await r.json();
-  if (!d || !d[0] || !d[0].src) throw new Error('فشل رفع الصورة');
-  return 'https://telegra.ph' + d[0].src;
-}
-
-function fallbackDownload() {
-  setStatus('⬇ جاري تحميل الصور...', 'gesture');
-  photos.forEach((dataUrl, i) => {
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = 'moria_' + (i + 1) + '.jpg';
-    a.click();
-  });
-  setTimeout(() => setStatus('✅ تم التحميل! ارفع إبهامك لل QR', 'ready'), 1000);
-}
-
-async function generateQRCode() {
+// ─── QR / UPLOAD ─────────────────────────────────
+async function showQR() {
   if (photos.length === 0) {
-    setStatus('⚠️ التقط الصور أولاً', 'ready');
+    setStatus('لا توجد صور بعد', false);
     return;
   }
-  
-  if (typeof QRCode === 'undefined') {
-    setStatus('❌ مكتبة QR لم يتم تحميلها، أعد تحميل الصفحة', 'ready');
-    return;
-  }
-  
-  setStatus('📸 جاري رفع الصور...', 'gesture');
-  
+  qrCard.classList.add('visible');
+  qrContainer.innerHTML = '<div id="qr-loading" style="color:rgba(255,255,255,0.5);font-size:13px;text-align:center;font-family:DM Sans,sans-serif;">جارٍ الرفع...</div>';
+
   try {
-    const urls = [];
-    for (let i = 0; i < photos.length; i++) {
-      setStatus('📸 رفع الصورة ' + (i + 1) + '/' + photos.length + '...', 'gesture');
-      const u = await uploadFile(photos[i]);
-      urls.push(u);
-    }
-    
-    let token = localStorage.getItem('tg_token');
-    if (!token) {
-      const a = await (await fetchWithTimeout('https://api.telegra.ph/createAccount', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ short_name: 'Moria', author_name: 'مطعم ومقهى موريا' })
-      })).json();
-      if (a.ok) { token = a.result.access_token; localStorage.setItem('tg_token', token); }
-    }
-    
-    let pageUrl;
-    if (token) {
-      const p = await (await fetchWithTimeout('https://api.telegra.ph/createPage', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          access_token: token, title: 'صور من مطعم ومقهى موريا',
-          author_name: 'مطعم ومقهى موريا',
-          content: [ ...urls.flatMap(u => [
-            { tag: 'img', attrs: { src: u } },
-            { tag: 'p', children: [{ tag: 'a', attrs: { href: u }, children: ['⬇ تحميل الصورة'] }] }
-          ]), { tag: 'p', children: ['📸 مطعم ومقهى موريا - افتح كل صورة واضغط على رابط التحميل أسفلها'] } ]
-        })
-      })).json();
-      if (p.ok) pageUrl = 'https://telegra.ph/' + p.result.path;
-    }
-    
-    showQRCard(pageUrl || urls.join('\n'), urls.length);
+    const urls = await uploadPhotos();
+    const pageUrl = await createTelegraphPage(urls);
+    renderQR(pageUrl);
   } catch (e) {
-    setStatus('❌ تعذر رفع الصور — سيتم تحميلها مباشرة', 'ready');
-    setTimeout(fallbackDownload, 800);
+    console.warn('Telegraph failed, fallback QR:', e);
+    const fallback = photos.map((_, i) => `صورة ${i+1}`).join('\n');
+    try {
+      renderQR(window.location.href + '#photos');
+    } catch (e2) {
+      qrContainer.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:12px;padding:10px;text-align:center;font-family:DM Sans,sans-serif;">فشل الرفع. جارٍ التحميل المباشر...</div>';
+      photos.forEach((p, i) => {
+        const a = document.createElement('a');
+        a.href = p; a.download = `moria_${i+1}.jpg`;
+        a.click();
+      });
+    }
   }
 }
 
-function showQRCard(text, count) {
-  const wrap = document.getElementById('qr-code-wrap');
-  wrap.innerHTML = '';
-  new QRCode(wrap, {
-    text: text, width: 200, height: 200,
-    colorDark: '#ffffff', colorLight: '#141414',
+async function uploadPhotos() {
+  const urls = [];
+  for (const dataUrl of photos) {
+    const blob = dataURLtoBlob(dataUrl);
+    const fd = new FormData();
+    fd.append('file', blob, 'photo.jpg');
+    const res = await fetch('https://telegra.ph/upload', { method: 'POST', body: fd });
+    const json = await res.json();
+    if (json[0]?.src) {
+      urls.push('https://telegra.ph' + json[0].src);
+    }
+  }
+  return urls;
+}
+
+async function createTelegraphPage(imageUrls) {
+  let token = localStorage.getItem('tg_token');
+  if (!token) {
+    const acc = await fetch('https://api.telegra.ph/createAccount', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ short_name: 'MoriaPhotoBooth', author_name: 'Moria Cafe' })
+    });
+    const aJson = await acc.json();
+    token = aJson.result?.access_token;
+    if (token) localStorage.setItem('tg_token', token);
+  }
+
+  const content = [];
+  for (const url of imageUrls) {
+    content.push({ tag: 'figure', children: [{ tag: 'img', attrs: { src: url } }] });
+    content.push({ tag: 'p', children: [{ tag: 'a', attrs: { href: url }, children: ['⬇ تحميل الصورة'] }] });
+  }
+  content.push({ tag: 'p', children: ['📸 مطعم ومقهى موريا'] });
+
+  const page = await fetch('https://api.telegra.ph/createPage', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      access_token: token,
+      title: 'Moria Photo Booth',
+      content,
+      return_content: false
+    })
+  });
+  const pJson = await page.json();
+  return pJson.result?.url;
+}
+
+function renderQR(url) {
+  qrContainer.innerHTML = '';
+  new QRCode(qrContainer, {
+    text: url,
+    width: 172,
+    height: 172,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
     correctLevel: QRCode.CorrectLevel.M
   });
-  document.getElementById('qr-photo-count').textContent = count + ' صورة — امسح QR بهاتفك';
-  document.getElementById('qr-card').classList.add('show');
-  setStatus('✅ QR جاهز! امسحه لفتح المعرض', 'ready');
 }
 
-function onFaceResults(results) {
-  faceDetections = results.detections || [];
+function closeQR() {
+  qrCard.classList.remove('visible');
+  qrVisible = false;
+  gestureHoldCount = 0;
+  lastGesture = null;
+  setStatus('جاهز', false);
 }
 
-function onResults(results) {
-  if (snapped || countingDown) return;
-  overlay.width  = overlay.clientWidth  || 640;
-  overlay.height = overlay.clientHeight || 360;
-  if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
-  if (faceDetections.length > 0) drawFaces(faceDetections);
-  const lm = results.multiHandLandmarks?.[0];
-  if (lm) {
-    drawLandmarks(lm);
-    const g = classifyGesture(lm);
-    if (g !== 'none') {
-      if (g === lastGesture) gestureHoldFrames++;
-      else { gestureHoldFrames = 0; lastGesture = g; }
-      if (gestureHoldFrames >= HOLD_FRAMES) {
-        gestureHoldFrames = 0;
-        if (g === 'open') {
-          setStatus('🖐 كف مفتوح! بدء العد التنازلي...', 'gesture');
-          triggerCountdown(3, capturePhoto);
-        } else if (g === 'peace') {
-          setStatus('✌️ سلام! تصوير الآن...', 'gesture');
-          capturePhoto();
-        } else if (g === 'fist') {
-          setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
-        } else if (g === 'thumbsup') {
-          setStatus('👍 إنشاء رمز QR...', 'gesture');
-          generateQRCode();
-        }
-      } else {
-        const names = {
-          open: '🖐 أمسك الكف ثابتاً...',
-          peace: '✌️ أمسك السلام ثابتاً...',
-          fist: '👊 قبضة — إلغاء',
-          thumbsup: '👍 أمسك الإبهام ثابتاً...'
-        };
-        setStatus(names[g] || 'تم اكتشاف إيماءة...', 'gesture');
-      }
-    } else {
-      lastGesture = null;
-      gestureHoldFrames = 0;
-      setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
+function dataURLtoBlob(dataUrl) {
+  const arr = dataUrl.split(','), mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  return new Blob([u8arr], {type: mime});
+}
+
+// ─── GESTURE HANDLER ─────────────────────────────
+function handleGesture(gesture) {
+  if (qrCard.classList.contains('visible')) return;
+
+  if (gesture === lastGesture) {
+    gestureHoldCount++;
+  } else {
+    gestureHoldCount = 1;
+    lastGesture = gesture;
+    if (gesture !== 'open') cancelCountdown();
+  }
+
+  if (!gesture) {
+    setStatus('جاهز', false);
+    gestureHoldCount = 0;
+    return;
+  }
+
+  const pct = Math.min(gestureHoldCount / HOLD_THRESHOLD * 100, 100);
+
+  if (gestureHoldCount >= HOLD_THRESHOLD) {
+    gestureHoldCount = 0;
+    lastGesture = null;
+    if (gesture === 'open') {
+      setStatus('⏱ 3 ثوانٍ...', true);
+      startCountdown();
+    } else if (gesture === 'peace') {
+      setStatus('📸 التقاط!', true);
+      capturePhoto();
+    } else if (gesture === 'fist') {
+      cancelCountdown();
+      setStatus('❌ إلغاء', false);
+    } else if (gesture === 'thumbsup') {
+      setStatus('⬆️ جارٍ الرفع...', true);
+      showQR();
     }
   } else {
-    lastGesture = null;
-    gestureHoldFrames = 0;
-    setStatus('لم يتم اكتشاف يد — اعرض يدك للكاميرا', 'ready');
+    const labels = { open: `🖐 ${Math.round(pct)}%`, peace: `✌️ ${Math.round(pct)}%`, fist: `👊 ${Math.round(pct)}%`, thumbsup: `👍 ${Math.round(pct)}%` };
+    setStatus(labels[gesture] || 'جاهز', true);
   }
 }
 
-async function startCam() {
-  setStatus('جارٍ تشغيل الكاميرا...', '');
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
-      audio: false
-    });
-    video.srcObject = stream;
-    video.play();
-    placeholder.style.display = 'none';
-    ctx = overlay.getContext('2d');
+// ─── MEDIAPIPE HANDS ────────────────────────────
+let faceDetector = null;
+let lastFaceResults = [];
 
-    if (typeof Hands === 'undefined') {
-      document.getElementById('no-mediapipe').style.display = '';
-      return;
-    }
-
-    handsModel = new Hands({
-      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
-    });
-    handsModel.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.7,
-      minTrackingConfidence: 0.6
-    });
-    handsModel.onResults(onResults);
-
-    if (typeof FaceDetection !== 'undefined') {
-      faceModel = new FaceDetection({
-        locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${f}`
-      });
-      faceModel.setOptions({
-        modelSelection: 0,
-        minDetectionConfidence: 0.5
-      });
-      faceModel.onResults(onFaceResults);
-    }
-
-    mpCam = new Camera(video, {
-      onFrame: async () => {
-        const tasks = [handsModel.send({ image: video })];
-        if (faceModel) tasks.push(faceModel.send({ image: video }));
-        await Promise.all(tasks);
-      },
-      width: 1280,
-      height: 720
-    });
-    mpCam.start();
-
-    setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
-  } catch (e) {
-    setStatus('تم رفض الوصول إلى الكاميرا أو أنها غير متوفرة', '');
-  }
-}
-
-window.addEventListener('load', () => {
-  startCam();
-  startFocusCycle();
+const hands = new Hands({
+  locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
 });
 
+hands.setOptions({
+  maxNumHands: 1,
+  modelComplexity: 1,
+  minDetectionConfidence: 0.7,
+  minTrackingConfidence: 0.6
+});
+
+hands.onResults(results => {
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+  // Draw faces if available
+  if (lastFaceResults.length > 0) drawFace(lastFaceResults);
+
+  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+    const landmarks = results.multiHandLandmarks[0];
+    drawHand(landmarks);
+    const gesture = classifyGesture(landmarks);
+    handleGesture(gesture);
+  } else {
+    if (!countdownInterval) {
+      setStatus('جاهز', false);
+    }
+    gestureHoldCount = 0;
+    lastGesture = null;
+  }
+});
+
+// ─── FACE DETECTION ──────────────────────────────
+function tryLoadFaceDetection() {
+  if (typeof FaceDetection === 'undefined') return;
+  faceDetector = new FaceDetection({
+    locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
+  });
+  faceDetector.setOptions({ model: 'short', minDetectionConfidence: 0.5 });
+  faceDetector.onResults(res => {
+    lastFaceResults = res.detections || [];
+  });
+}
+
+// ─── CAMERA ──────────────────────────────────────
+const camera = new Camera(video, {
+  onFrame: async () => {
+    await hands.send({ image: video });
+    if (faceDetector) {
+      try { await faceDetector.send({ image: video }); } catch(e) {}
+    }
+  },
+  width: 1280,
+  height: 720
+});
+
+camera.start().then(() => {
+  setStatus('جاهز', false);
+  tryLoadFaceDetection();
+}).catch(err => {
+  setStatus('⚠️ تعذّر الوصول للكاميرا', false);
+  console.error(err);
+});
 </script>
 </body>
 </html>
