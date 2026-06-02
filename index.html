@@ -110,6 +110,7 @@
     .g-card {
       pointer-events: auto; cursor: pointer;
       background: rgba(20,20,20,0.85);
+      -webkit-backdrop-filter: blur(8px);
       backdrop-filter: blur(8px);
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 16px;
@@ -122,6 +123,31 @@
     .g-card .g-icon { font-size: 48px; line-height: 1.2; }
     .g-card .g-name { font-size: 18px; font-weight: 500; color: #fff; margin-top: 4px; }
     .g-card .g-desc { font-size: 13px; color: #aaa; }
+    @media (max-width: 767px) {
+      .g-card { padding: 14px 24px; }
+      .g-card .g-icon { font-size: 36px; }
+      .g-card .g-name { font-size: 15px; }
+      #gesture-guide { top: 12px; }
+      #status-bar { padding: 2rem 1rem 1rem; }
+      #status-text { font-size: 13px; }
+      #photo-result { bottom: 60px; }
+      .photo-item { width: 48px; height: 48px; }
+      #countdown-badge { font-size: 80px; }
+    }
+    @media (min-width: 768px) and (max-width: 1024px) {
+      .g-card { padding: 22px 44px; }
+      .g-card .g-icon { font-size: 54px; }
+      #countdown-badge { font-size: 140px; }
+    }
+    @media (orientation: landscape) and (max-height: 500px) {
+      #gesture-guide { top: 8px; }
+      .g-card { padding: 10px 20px; flex-direction: row; gap: 12px; }
+      .g-card .g-icon { font-size: 28px; }
+      .g-card .g-name { font-size: 13px; margin-top: 0; }
+      .g-card .g-desc { font-size: 11px; }
+      #g-dots { margin-top: 6px; }
+      #photo-result { bottom: 50px; }
+    }
     .g-card.active { border-color: #8b5cf6; box-shadow: 0 0 20px rgba(139,92,246,0.15); }
     .g-card.hidden { opacity: 0; transform: scale(0.9); pointer-events: none; position: absolute; }
 
@@ -182,7 +208,7 @@
       </svg>
       <p>Requesting camera access...</p>
     </div>
-    <video id="video" autoplay muted playsinline webkit-playsinline></video>
+    <video id="video" autoplay muted playsinline webkit-playsinline x-webkit-airplay="allow" disablePictureInPicture></video>
     <canvas id="overlay"></canvas>
     <div id="flash"></div>
     <div id="countdown-badge" aria-live="assertive"></div>
@@ -436,6 +462,95 @@ function dataURLtoBlob(d) {
   const a = new Uint8Array(b.length);
   for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i);
   return new Blob([a], { type: m });
+}
+
+function fetchWithTimeout(url, opt, ms) {
+  const c = new AbortController();
+  const id = setTimeout(() => c.abort(), ms || 8000);
+  return fetch(url, { ...opt, signal: c.signal }).then(r => { clearTimeout(id); return r; }).catch(e => { clearTimeout(id); throw e; });
+}
+
+async function uploadFile(dataUrl) {
+  const fd = new FormData();
+  fd.append('file', dataURLtoBlob(dataUrl), 'p.jpg');
+  const r = await fetchWithTimeout('https://telegra.ph/upload', { method: 'POST', body: fd });
+  const d = await r.json();
+  if (!d || !d[0] || !d[0].src) throw new Error('فشل رفع الصورة');
+  return 'https://telegra.ph' + d[0].src;
+}
+
+function fallbackDownload() {
+  setStatus('⬇ جاري تحميل الصور...', 'gesture');
+  photos.forEach((dataUrl, i) => {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = 'moria_' + (i + 1) + '.jpg';
+    a.click();
+  });
+  setTimeout(() => setStatus('✅ تم التحميل! ارفع إصبع واحد لل QR', 'ready'), 1000);
+}
+
+async function generateQRCode() {
+  if (photos.length === 0) {
+    setStatus('⚠️ التقط الصور أولاً', 'ready');
+    return;
+  }
+  
+  if (typeof QRCode === 'undefined') {
+    setStatus('❌ مكتبة QR لم يتم تحميلها، أعد تحميل الصفحة', 'ready');
+    return;
+  }
+  
+  setStatus('📸 جاري رفع الصور...', 'gesture');
+  
+  try {
+    const urls = [];
+    for (let i = 0; i < photos.length; i++) {
+      setStatus('📸 رفع الصورة ' + (i + 1) + '/' + photos.length + '...', 'gesture');
+      const u = await uploadFile(photos[i]);
+      urls.push(u);
+    }
+    
+    let token = localStorage.getItem('tg_token');
+    if (!token) {
+      const a = await (await fetchWithTimeout('https://api.telegra.ph/createAccount', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ short_name: 'Moria', author_name: 'مطعم ومقهى موريا' })
+      })).json();
+      if (a.ok) { token = a.result.access_token; localStorage.setItem('tg_token', token); }
+    }
+    
+    let pageUrl;
+    if (token) {
+      const p = await (await fetchWithTimeout('https://api.telegra.ph/createPage', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_token: token, title: 'صور من مطعم ومقهى موريا',
+          author_name: 'مطعم ومقهى موريا',
+          content: [ ...urls.map(u => ({ tag: 'img', attrs: { src: u } })), { tag: 'p', children: ['📸 مطعم ومقهى موريا'] } ]
+        })
+      })).json();
+      if (p.ok) pageUrl = 'https://telegra.ph/' + p.result.path;
+    }
+    
+    showQRCard(pageUrl || urls.join('\n'), urls.length);
+  } catch (e) {
+    setStatus('❌ تعذر رفع الصور — سيتم تحميلها مباشرة', 'ready');
+    setTimeout(fallbackDownload, 800);
+  }
+}
+
+function showQRCard(text, count) {
+  const wrap = document.getElementById('qr-code-wrap');
+  wrap.innerHTML = '';
+  new QRCode(wrap, {
+    text: text, width: 240, height: 240,
+    colorDark: '#ffffff', colorLight: '#141414',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+  document.getElementById('qr-photo-count').textContent = count + ' صورة — امسح QR بهاتفك';
+  document.getElementById('qr-modal-overlay').classList.add('show');
+  setStatus('✅ QR جاهز! امسحه لفتح المعرض', 'ready');
 }
 
 async function uploadToTelegraph(dataUrl) {
