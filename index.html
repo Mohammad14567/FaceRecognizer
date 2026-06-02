@@ -351,7 +351,7 @@
 <div id="qr-card">
   <div class="qr-inner">
     <div class="qr-title">📸 صورك جاهزة!</div>
-    <div class="qr-subtitle">امسح رمز QR لتحميل الصور</div>
+    <div class="qr-subtitle">امسح رمز QR بهاتفك لفتح صفحة التحميل</div>
     <div id="qr-container">
       <div id="qr-loading">جارٍ الرفع...</div>
     </div>
@@ -534,6 +534,8 @@ function roundRect(c, x, y, w, h, r) {
 }
 
 // ─── GESTURE CLASSIFICATION ───────────────────────
+const PEACE_HOLD = 2; // فوري — 2 فريم بس
+
 function classifyGesture(lms) {
   const fingerTips  = [8, 12, 16, 20];
   const fingerMids  = [6, 10, 14, 18];
@@ -541,13 +543,14 @@ function classifyGesture(lms) {
   const thumbBase   = lms[2];
 
   const fingersUp = fingerTips.map((tip, i) => lms[tip].y < lms[fingerMids[i]].y);
-  const thumbOut  = thumbTip.x < thumbBase.x; // mirrored
+  const thumbOut  = thumbTip.x < thumbBase.x;
 
   const allFingersUp = fingersUp.every(Boolean);
   if (allFingersUp && thumbOut) return 'open';
 
-  const peaceUp = fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3];
-  if (peaceUp && !thumbOut) return 'peace';
+  const indexUp = fingersUp[0] && fingersUp[1];
+  const ringDown = !fingersUp[2] && !fingersUp[3];
+  if (indexUp && ringDown) return 'peace';
 
   const allDown = fingersUp.every(f => !f);
   if (allDown && thumbOut) return 'thumbsup';
@@ -634,6 +637,79 @@ function cancelCountdown() {
   }
 }
 
+// ─── IMAGE UPLOAD (بدون إعدادات مسبقة) ──────────
+// 👇 يشتغل فوراً بدون ما تسوي أي شيء — يستخدم 3 خدمات احتياطياً
+// لو تبغى API key حق imagetourl (اختياري), سجل في https://imagetourl.cloud وحطه تحت:
+const IMAGETOURL_KEY = ''; // اختياري
+// لو تبغى تستخدم Imgur, روح https://api.imgur.com/oauth2/addclient وحط Client-ID تحت:
+const IMGUR_CLIENT_ID = ''; // اختياري
+
+async function uploadToImageTourl(dataUrl) {
+  const blob = dataURLtoBlob(dataUrl);
+  const fd = new FormData();
+  fd.append('file', blob, 'photo.jpg');
+  const headers = {};
+  if (IMAGETOURL_KEY) headers['Authorization'] = `Bearer ${IMAGETOURL_KEY}`;
+  const res = await fetch('https://imagetourl.cloud/api/upload', { method: 'POST', headers, body: fd });
+  const json = await res.json();
+  if (json.data?.url) return json.data.url;
+  throw new Error('imagetourl upload failed');
+}
+
+async function uploadToImg402(dataUrl) {
+  const base64 = dataUrl.split(',')[1];
+  const res = await fetch('https://img402.dev/api/free', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ file: base64 })
+  });
+  const json = await res.json();
+  if (json.url) return json.url;
+  throw new Error('img402 upload failed');
+}
+
+async function uploadToImgur(dataUrl) {
+  const base64 = dataUrl.split(',')[1];
+  const res = await fetch('https://api.imgur.com/3/image', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Client-ID ${IMGUR_CLIENT_ID}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ image: base64, type: 'base64' })
+  });
+  const json = await res.json();
+  if (json.success) return json.data.link;
+  throw new Error(json.data?.error || 'Imgur upload failed');
+}
+
+async function uploadToTelegraph(dataUrl) {
+  const blob = dataURLtoBlob(dataUrl);
+  const fd = new FormData();
+  fd.append('file', blob, 'photo.jpg');
+  const res = await fetch('https://telegra.ph/upload', { method: 'POST', body: fd });
+  const json = await res.json();
+  if (json[0]?.src) return 'https://telegra.ph' + json[0].src;
+  throw new Error('Telegraph upload failed');
+}
+
+async function uploadPhotos() {
+  const urls = [];
+  for (const dataUrl of photos) {
+    let url = null;
+    // 1) imagetourl.cloud — ما يحتاج API key
+    try { url = await uploadToImageTourl(dataUrl); } catch (e) { console.warn('imagetourl failed:', e); }
+    // 2) img402.dev — بديل بدون API key
+    if (!url) { try { url = await uploadToImg402(dataUrl); } catch (e) { console.warn('img402 failed:', e); } }
+    // 3) Imgur — لو حطيت Client-ID فوق
+    if (!url && IMGUR_CLIENT_ID) { try { url = await uploadToImgur(dataUrl); } catch (e) { console.warn('Imgur failed:', e); } }
+    // 4) Telegraph — آخر خيار
+    if (!url) { url = await uploadToTelegraph(dataUrl); }
+    urls.push(url);
+  }
+  return urls;
+}
+
 // ─── QR / UPLOAD ─────────────────────────────────
 async function showQR() {
   if (photos.length === 0) {
@@ -648,34 +724,27 @@ async function showQR() {
     const pageUrl = await createTelegraphPage(urls);
     renderQR(pageUrl);
   } catch (e) {
-    console.warn('Telegraph failed, fallback QR:', e);
-    const fallback = photos.map((_, i) => `صورة ${i+1}`).join('\n');
+    console.error('All upload methods failed:', e);
+    // Last resort: encode photos as a self-contained HTML data URI
     try {
-      renderQR(window.location.href + '#photos');
+      const html = generatePhotoPageHTML(photos);
+      const dataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+      renderQR(dataUri);
     } catch (e2) {
-      qrContainer.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:12px;padding:10px;text-align:center;font-family:DM Sans,sans-serif;">فشل الرفع. جارٍ التحميل المباشر...</div>';
-      photos.forEach((p, i) => {
-        const a = document.createElement('a');
-        a.href = p; a.download = `moria_${i+1}.jpg`;
-        a.click();
-      });
+      qrContainer.innerHTML = '<div style="color:rgba(255,255,255,0.6);font-size:14px;padding:20px;text-align:center;font-family:DM Sans,sans-serif;">⚠️ فشل رفع الصور<br><span style="font-size:12px;color:rgba(255,255,255,0.4);">يرجى المحاولة مرة أخرى</span></div>';
     }
   }
 }
 
-async function uploadPhotos() {
-  const urls = [];
-  for (const dataUrl of photos) {
-    const blob = dataURLtoBlob(dataUrl);
-    const fd = new FormData();
-    fd.append('file', blob, 'photo.jpg');
-    const res = await fetch('https://telegra.ph/upload', { method: 'POST', body: fd });
-    const json = await res.json();
-    if (json[0]?.src) {
-      urls.push('https://telegra.ph' + json[0].src);
-    }
-  }
-  return urls;
+function generatePhotoPageHTML(photoDataUrls) {
+  const imgs = photoDataUrls.map((url, i) =>
+    `<div style="margin-bottom:20px;text-align:center">
+      <img src="${url}" style="max-width:100%;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3)">
+      <br><br>
+      <a href="${url}" download="moria_${i+1}.jpg" style="display:inline-block;background:#fbbf24;color:#000;padding:10px 24px;border-radius:10px;text-decoration:none;font-weight:600;margin-top:8px">⬇ تحميل الصورة ${i+1}</a>
+    </div>`
+  ).join('\n');
+  return `<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>📸 Moria Photo Booth</title><style>body{font-family:sans-serif;background:#111;color:#fff;padding:20px;margin:0}h1{text-align:center;color:#fbbf24;font-size:22px;margin-bottom:24px}</style></head><body><h1>📸 صورك من موريا</h1>${imgs}<p style="text-align:center;color:rgba(255,255,255,0.3);font-size:12px;margin-top:30px">مطعم ومقهى موريا</p></body></html>`;
 }
 
 async function createTelegraphPage(imageUrls) {
@@ -759,9 +828,10 @@ function handleGesture(gesture) {
     return;
   }
 
-  const pct = Math.min(gestureHoldCount / HOLD_THRESHOLD * 100, 100);
+  const threshold = gesture === 'peace' ? PEACE_HOLD : HOLD_THRESHOLD;
+  const pct = Math.min(gestureHoldCount / threshold * 100, 100);
 
-  if (gestureHoldCount >= HOLD_THRESHOLD) {
+  if (gestureHoldCount >= threshold) {
     gestureHoldCount = 0;
     lastGesture = null;
     if (gesture === 'open') {
