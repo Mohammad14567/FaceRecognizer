@@ -682,21 +682,22 @@ async function startCam() {
     });
     handsModel.onResults(onResults);
 
-    faceModel = new FaceDetection({
-      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${f}`
-    });
-    faceModel.setOptions({
-      modelSelection: 0,
-      minDetectionConfidence: 0.5
-    });
-    faceModel.onResults(onFaceResults);
+    if (typeof FaceDetection !== 'undefined') {
+      faceModel = new FaceDetection({
+        locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${f}`
+      });
+      faceModel.setOptions({
+        modelSelection: 0,
+        minDetectionConfidence: 0.5
+      });
+      faceModel.onResults(onFaceResults);
+    }
 
     mpCam = new Camera(video, {
       onFrame: async () => {
-        await Promise.all([
-          handsModel.send({ image: video }),
-          faceModel.send({ image: video })
-        ]);
+        const tasks = [handsModel.send({ image: video })];
+        if (faceModel) tasks.push(faceModel.send({ image: video }));
+        await Promise.all(tasks);
       },
       width: 1280,
       height: 720
