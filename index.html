@@ -74,12 +74,30 @@
     z-index: 10;
     display: flex;
     gap: 8px;
+    align-items: center;
     background: rgba(13,13,13,0.72);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 20px;
     padding: 10px 14px;
+  }
+
+  #distance-hint {
+    position: fixed;
+    top: 88px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: rgba(13,13,13,0.5);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 4px 14px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    white-space: nowrap;
   }
 
   .gesture-item {
@@ -289,6 +307,7 @@
     .gesture-item { padding: 6px 8px; min-width: 56px; }
     .gesture-icon { font-size: 20px; }
     .gesture-label { font-size: 9px; }
+    #distance-hint { font-size: 10px; padding: 3px 10px; top: 82px; }
   }
 
   @media (min-width: 768px) and (max-width: 1024px) {
@@ -331,6 +350,8 @@
   </div>
 </div>
 
+<div id="distance-hint">📏 حافظ على مسافة 0.5 – 1 متر للحصول على أفضل نتيجة</div>
+
 <!-- Countdown -->
 <div id="countdown"></div>
 
@@ -360,6 +381,34 @@
 </div>
 
 <script>
+// ─── CLOUDINARY ──────────────────────────────────
+const CLOUDINARY_CLOUD = 'drjpgwl15';
+const CLOUDINARY_PRESET = 'moria_preset';
+
+// ─── GALLERY MODE (when QR is scanned) ──────────
+const galleryIds = new URLSearchParams(window.location.search).get('p');
+if (galleryIds) {
+  const ids = galleryIds.split(',');
+  const imgs = ids.map((id, i) =>
+    `<div style="margin-bottom:20px;text-align:center">
+      <img src="https://res.cloudinary.com/${CLOUDINARY_CLOUD}/image/upload/${id}" style="max-width:100%;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3)">
+      <br><br>
+      <a href="https://res.cloudinary.com/${CLOUDINARY_CLOUD}/image/upload/fl_attachment:${id}/${id}" style="display:inline-block;background:#fbbf24;color:#000;padding:10px 24px;border-radius:10px;text-decoration:none;font-weight:600;margin-top:8px">⬇ تحميل الصورة ${i+1}</a>
+    </div>`
+  ).join('\n');
+  document.body.innerHTML = `
+    <style>
+      body{margin:0;padding:20px;font-family:sans-serif;background:#111;color:#fff;direction:rtl}
+      h1{text-align:center;color:#fbbf24;font-size:22px;margin-bottom:24px}
+      .footer{text-align:center;color:rgba(255,255,255,0.3);font-size:12px;margin-top:30px}
+    </style>
+    <h1>📸 صورك من موريا</h1>
+    ${imgs}
+    <p class="footer">مطعم ومقهى موريا</p>
+  `;
+  throw new Error('gallery');
+}
+
 // ─── STATE ───────────────────────────────────────
 const photos = [];
 let gestureHoldCount = 0;
@@ -539,23 +588,20 @@ const PEACE_HOLD = 2; // فوري — 2 فريم بس
 function classifyGesture(lms) {
   const fingerTips  = [8, 12, 16, 20];
   const fingerMids  = [6, 10, 14, 18];
-  const thumbTip    = lms[4];
-  const thumbBase   = lms[2];
 
   const fingersUp = fingerTips.map((tip, i) => lms[tip].y < lms[fingerMids[i]].y);
-  const thumbOut  = thumbTip.x < thumbBase.x;
+  const thumbExtended = lms[4].y < lms[3].y; // رأس الإبهام فوق مفصل IP = الإبهام مرفوع
 
   const allFingersUp = fingersUp.every(Boolean);
-  if (allFingersUp && thumbOut) return 'open';
+  if (allFingersUp && thumbExtended) return 'open';
 
   const indexUp = fingersUp[0] && fingersUp[1];
   const ringDown = !fingersUp[2] && !fingersUp[3];
   if (indexUp && ringDown) return 'peace';
 
   const allDown = fingersUp.every(f => !f);
-  if (allDown && thumbOut) return 'thumbsup';
-
-  if (allDown && !thumbOut) return 'fist';
+  if (allDown && thumbExtended) return 'thumbsup';
+  if (allDown && !thumbExtended) return 'fist';
 
   return null;
 }
@@ -637,77 +683,15 @@ function cancelCountdown() {
   }
 }
 
-// ─── IMAGE UPLOAD (بدون إعدادات مسبقة) ──────────
-// 👇 يشتغل فوراً بدون ما تسوي أي شيء — يستخدم 3 خدمات احتياطياً
-// لو تبغى API key حق imagetourl (اختياري), سجل في https://imagetourl.cloud وحطه تحت:
-const IMAGETOURL_KEY = ''; // اختياري
-// لو تبغى تستخدم Imgur, روح https://api.imgur.com/oauth2/addclient وحط Client-ID تحت:
-const IMGUR_CLIENT_ID = ''; // اختياري
-
-async function uploadToImageTourl(dataUrl) {
-  const blob = dataURLtoBlob(dataUrl);
+// ─── CLOUDINARY UPLOAD ──────────────────────────
+async function uploadToCloudinary(dataUrl) {
   const fd = new FormData();
-  fd.append('file', blob, 'photo.jpg');
-  const headers = {};
-  if (IMAGETOURL_KEY) headers['Authorization'] = `Bearer ${IMAGETOURL_KEY}`;
-  const res = await fetch('https://imagetourl.cloud/api/upload', { method: 'POST', headers, body: fd });
+  fd.append('file', dataUrl);
+  fd.append('upload_preset', CLOUDINARY_PRESET);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method: 'POST', body: fd });
   const json = await res.json();
-  if (json.data?.url) return json.data.url;
-  throw new Error('imagetourl upload failed');
-}
-
-async function uploadToImg402(dataUrl) {
-  const base64 = dataUrl.split(',')[1];
-  const res = await fetch('https://img402.dev/api/free', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ file: base64 })
-  });
-  const json = await res.json();
-  if (json.url) return json.url;
-  throw new Error('img402 upload failed');
-}
-
-async function uploadToImgur(dataUrl) {
-  const base64 = dataUrl.split(',')[1];
-  const res = await fetch('https://api.imgur.com/3/image', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Client-ID ${IMGUR_CLIENT_ID}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ image: base64, type: 'base64' })
-  });
-  const json = await res.json();
-  if (json.success) return json.data.link;
-  throw new Error(json.data?.error || 'Imgur upload failed');
-}
-
-async function uploadToTelegraph(dataUrl) {
-  const blob = dataURLtoBlob(dataUrl);
-  const fd = new FormData();
-  fd.append('file', blob, 'photo.jpg');
-  const res = await fetch('https://telegra.ph/upload', { method: 'POST', body: fd });
-  const json = await res.json();
-  if (json[0]?.src) return 'https://telegra.ph' + json[0].src;
-  throw new Error('Telegraph upload failed');
-}
-
-async function uploadPhotos() {
-  const urls = [];
-  for (const dataUrl of photos) {
-    let url = null;
-    // 1) imagetourl.cloud — ما يحتاج API key
-    try { url = await uploadToImageTourl(dataUrl); } catch (e) { console.warn('imagetourl failed:', e); }
-    // 2) img402.dev — بديل بدون API key
-    if (!url) { try { url = await uploadToImg402(dataUrl); } catch (e) { console.warn('img402 failed:', e); } }
-    // 3) Imgur — لو حطيت Client-ID فوق
-    if (!url && IMGUR_CLIENT_ID) { try { url = await uploadToImgur(dataUrl); } catch (e) { console.warn('Imgur failed:', e); } }
-    // 4) Telegraph — آخر خيار
-    if (!url) { url = await uploadToTelegraph(dataUrl); }
-    urls.push(url);
-  }
-  return urls;
+  if (json.public_id) return json.public_id;
+  throw new Error('Cloudinary upload failed');
 }
 
 // ─── QR / UPLOAD ─────────────────────────────────
@@ -720,65 +704,17 @@ async function showQR() {
   qrContainer.innerHTML = '<div id="qr-loading" style="color:rgba(255,255,255,0.5);font-size:13px;text-align:center;font-family:DM Sans,sans-serif;">جارٍ الرفع...</div>';
 
   try {
-    const urls = await uploadPhotos();
-    const pageUrl = await createTelegraphPage(urls);
-    renderQR(pageUrl);
-  } catch (e) {
-    console.error('All upload methods failed:', e);
-    // Last resort: encode photos as a self-contained HTML data URI
-    try {
-      const html = generatePhotoPageHTML(photos);
-      const dataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
-      renderQR(dataUri);
-    } catch (e2) {
-      qrContainer.innerHTML = '<div style="color:rgba(255,255,255,0.6);font-size:14px;padding:20px;text-align:center;font-family:DM Sans,sans-serif;">⚠️ فشل رفع الصور<br><span style="font-size:12px;color:rgba(255,255,255,0.4);">يرجى المحاولة مرة أخرى</span></div>';
+    const ids = [];
+    for (const dataUrl of photos) {
+      const id = await uploadToCloudinary(dataUrl);
+      ids.push(id);
     }
+    const galleryUrl = `${window.location.origin}${window.location.pathname}?p=${ids.join(',')}`;
+    renderQR(galleryUrl);
+  } catch (e) {
+    console.error('Upload failed:', e);
+    qrContainer.innerHTML = '<div style="color:rgba(255,255,255,0.6);font-size:14px;padding:20px;text-align:center;font-family:DM Sans,sans-serif;">⚠️ فشل رفع الصور<br><span style="font-size:12px;color:rgba(255,255,255,0.4);">تأكد من إعدادات Cloudinary</span></div>';
   }
-}
-
-function generatePhotoPageHTML(photoDataUrls) {
-  const imgs = photoDataUrls.map((url, i) =>
-    `<div style="margin-bottom:20px;text-align:center">
-      <img src="${url}" style="max-width:100%;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3)">
-      <br><br>
-      <a href="${url}" download="moria_${i+1}.jpg" style="display:inline-block;background:#fbbf24;color:#000;padding:10px 24px;border-radius:10px;text-decoration:none;font-weight:600;margin-top:8px">⬇ تحميل الصورة ${i+1}</a>
-    </div>`
-  ).join('\n');
-  return `<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>📸 Moria Photo Booth</title><style>body{font-family:sans-serif;background:#111;color:#fff;padding:20px;margin:0}h1{text-align:center;color:#fbbf24;font-size:22px;margin-bottom:24px}</style></head><body><h1>📸 صورك من موريا</h1>${imgs}<p style="text-align:center;color:rgba(255,255,255,0.3);font-size:12px;margin-top:30px">مطعم ومقهى موريا</p></body></html>`;
-}
-
-async function createTelegraphPage(imageUrls) {
-  let token = localStorage.getItem('tg_token');
-  if (!token) {
-    const acc = await fetch('https://api.telegra.ph/createAccount', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ short_name: 'MoriaPhotoBooth', author_name: 'Moria Cafe' })
-    });
-    const aJson = await acc.json();
-    token = aJson.result?.access_token;
-    if (token) localStorage.setItem('tg_token', token);
-  }
-
-  const content = [];
-  for (const url of imageUrls) {
-    content.push({ tag: 'figure', children: [{ tag: 'img', attrs: { src: url } }] });
-    content.push({ tag: 'p', children: [{ tag: 'a', attrs: { href: url }, children: ['⬇ تحميل الصورة'] }] });
-  }
-  content.push({ tag: 'p', children: ['📸 مطعم ومقهى موريا'] });
-
-  const page = await fetch('https://api.telegra.ph/createPage', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      access_token: token,
-      title: 'Moria Photo Booth',
-      content,
-      return_content: false
-    })
-  });
-  const pJson = await page.json();
-  return pJson.result?.url;
 }
 
 function renderQR(url) {
@@ -799,15 +735,6 @@ function closeQR() {
   gestureHoldCount = 0;
   lastGesture = null;
   setStatus('جاهز', false);
-}
-
-function dataURLtoBlob(dataUrl) {
-  const arr = dataUrl.split(','), mime = arr[0].match(/:(.*?);/)[1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) u8arr[n] = bstr.charCodeAt(n);
-  return new Blob([u8arr], {type: mime});
 }
 
 // ─── GESTURE HANDLER ─────────────────────────────
@@ -863,9 +790,9 @@ const hands = new Hands({
 
 hands.setOptions({
   maxNumHands: 1,
-  modelComplexity: 1,
-  minDetectionConfidence: 0.7,
-  minTrackingConfidence: 0.6
+  modelComplexity: 2,
+  minDetectionConfidence: 0.4,
+  minTrackingConfidence: 0.4
 });
 
 hands.onResults(results => {
