@@ -372,23 +372,128 @@ const CLOUDINARY_PRESET = 'moria_preset';
 const galleryIds = new URLSearchParams(window.location.search).get('p');
 if (galleryIds) {
   const ids = galleryIds.split(',');
-  const imgs = ids.map((id, i) =>
-    `<div style="margin-bottom:20px;text-align:center">
-      <img src="https://res.cloudinary.com/${CLOUDINARY_CLOUD}/image/upload/${id}" style="max-width:100%;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3)">
-      <br><br>
-      <a href="https://res.cloudinary.com/${CLOUDINARY_CLOUD}/image/upload/fl_attachment:${id}/${id}" style="display:inline-block;background:#fbbf24;color:#000;padding:10px 24px;border-radius:10px;text-decoration:none;font-weight:600;margin-top:8px">⬇ تحميل الصورة ${i+1}</a>
-    </div>`
-  ).join('\n');
-  document.body.innerHTML = `
-    <style>
-      body{margin:0;padding:20px;font-family:sans-serif;background:#111;color:#fff;direction:rtl}
-      h1{text-align:center;color:#fbbf24;font-size:22px;margin-bottom:24px}
-      .footer{text-align:center;color:rgba(255,255,255,0.3);font-size:12px;margin-top:30px}
-    </style>
-    <h1>📸 صورك من موريا</h1>
-    ${imgs}
-    <p class="footer">مطعم ومقهى موريا</p>
-  `;
+  const CLOUD = CLOUDINARY_CLOUD;
+  const FILTERS = [
+    { name: 'أصلي', css: 'none' },
+    { name: 'كلارندون', css: 'brightness(1.12) contrast(1.15) saturate(1.25)' },
+    { name: 'جونو', css: 'brightness(1.05) contrast(1.12) saturate(1.35) hue-rotate(-5deg)' },
+    { name: 'لارك', css: 'brightness(1.08) contrast(0.88) saturate(0.82) sepia(0.06)' },
+    { name: 'غينغهام', css: 'brightness(1.02) contrast(0.95) saturate(0.78) sepia(0.08)' },
+    { name: 'فالنسيا', css: 'brightness(1.1) contrast(0.92) saturate(1.08) sepia(0.1)' },
+    { name: 'إكس-برو', css: 'brightness(1.05) contrast(1.25) saturate(1.35) sepia(0.18)' },
+    { name: 'سييرا', css: 'brightness(0.92) contrast(1.08) saturate(0.88) sepia(0.14)' },
+    { name: 'ويلو', css: 'brightness(0.92) contrast(0.92) saturate(0.55) grayscale(1)' },
+    { name: '1977', css: 'brightness(1.1) contrast(1.05) saturate(0.65) sepia(0.35) hue-rotate(-10deg)' },
+  ];
+
+  window.gIds = ids;
+  window.gCloud = CLOUD;
+  window.gFilters = FILTERS;
+  window.gFilterState = new Array(ids.length).fill(0);
+
+  window.closePanel = function () {
+    var el = document.getElementById('filter-overlay');
+    if (el) el.style.display = 'none';
+  };
+
+  window.applyFilter = function (imgIdx, filterIdx) {
+    gFilterState[imgIdx] = filterIdx;
+    var img = document.querySelector('.photo-card[data-idx="' + imgIdx + '"] .photo-img');
+    if (img) img.style.filter = gFilters[filterIdx].css;
+    closePanel();
+  };
+
+  window.openPanel = function (imgIdx) {
+    var overlay = document.getElementById('filter-overlay');
+    var container = document.getElementById('filter-thumbnails');
+    if (!overlay || !container) return;
+    container.innerHTML = gFilters.map(function (f, fi) {
+      return '<div class="filter-thumb" onclick="applyFilter(' + imgIdx + ',' + fi + ')">' +
+        '<img src="https://res.cloudinary.com/' + gCloud + '/image/upload/w_72,h_72,c_fill/' + gIds[imgIdx] + '" style="filter:' + f.css + ';width:72px;height:72px;object-fit:cover;border-radius:8px;display:block" crossorigin="anonymous">' +
+        '<span style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:4px;display:block;text-align:center">' + f.name + '</span>' +
+        '</div>';
+    }).join('');
+    overlay.style.display = 'flex';
+  };
+
+  window.downloadOne = function (idx) {
+    var f = gFilters[gFilterState[idx]];
+    if (f.css === 'none') {
+      var a = document.createElement('a');
+      a.href = 'https://res.cloudinary.com/' + gCloud + '/image/upload/fl_attachment:' + gIds[idx] + '/' + gIds[idx];
+      a.download = 'moria-' + (idx + 1) + '.jpg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+    var filterCss = f.css;
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function () {
+      var canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      var ctx = canvas.getContext('2d');
+      ctx.filter = filterCss;
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'moria-' + (idx + 1) + '.jpg';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 'image/jpeg', 0.95);
+    };
+    img.src = 'https://res.cloudinary.com/' + gCloud + '/image/upload/' + gIds[idx];
+  };
+
+  window.downloadAll = function () {
+    gIds.forEach(function (_, i) {
+      setTimeout(function () { downloadOne(i); }, i * 800);
+    });
+  };
+
+  var imgs = ids.map(function (id, i) {
+    return '<div class="photo-card" data-idx="' + i + '">' +
+      '<div class="card-actions"><button class="filter-btn" onclick="openPanel(' + i + ')">🎨</button></div>' +
+      '<img class="photo-img" src="https://res.cloudinary.com/' + CLOUD + '/image/upload/' + id + '" crossorigin="anonymous">' +
+      '<br><button class="dl-btn" onclick="downloadOne(' + i + ')">⬇ تحميل ' + (i + 1) + '</button>' +
+      '</div>';
+  }).join('\n');
+
+  document.body.innerHTML =
+    '<style>' +
+    'body{margin:0;padding:20px;font-family:sans-serif;background:#111;color:#fff;direction:rtl}' +
+    'h1{text-align:center;color:#fbbf24;font-size:22px;margin-bottom:24px}' +
+    '#dl-all{display:block;width:fit-content;margin:0 auto 20px;background:#22c55e;color:#000;border:none;padding:14px 32px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer}' +
+    '.photo-card{position:relative;margin-bottom:20px;text-align:center}' +
+    '.card-actions{position:absolute;top:8px;right:8px;z-index:2}' +
+    '.filter-btn{background:rgba(0,0,0,0.5);border:none;border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}' +
+    '.photo-img{max-width:100%;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3)}' +
+    '.dl-btn{display:inline-block;background:#fbbf24;color:#000;border:none;padding:10px 24px;border-radius:10px;text-decoration:none;font-weight:600;margin-top:8px;cursor:pointer;font-size:14px}' +
+    '#filter-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:flex-end;justify-content:center;padding:20px}' +
+    '#filter-panel{background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 12px;max-width:500px;width:100%}' +
+    '#filter-panel h3{text-align:center;margin:0 0 14px;font-size:14px;color:rgba(255,255,255,0.5)}' +
+    '#filter-thumbnails{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch}' +
+    '.filter-thumb{flex-shrink:0;width:72px;cursor:pointer;text-align:center}' +
+    '.filter-thumb img{outline:2px solid transparent;outline-offset:2px;border-radius:8px}' +
+    '.footer{text-align:center;color:rgba(255,255,255,0.3);font-size:12px;margin-top:30px}' +
+    '</style>' +
+    '<h1>📸 صورك من موريا</h1>' +
+    '<button id="dl-all" onclick="downloadAll()">⬇⬇ تحميل الكل</button>' +
+    imgs +
+    '<div id="filter-overlay" onclick="closePanel()">' +
+    '<div id="filter-panel" onclick="event.stopPropagation()">' +
+    '<h3>اختر فلتر</h3>' +
+    '<div id="filter-thumbnails"></div>' +
+    '</div>' +
+    '</div>' +
+    '<p class="footer">مطعم ومقهى موريا</p>';
+
   throw new Error('gallery');
 }
 
