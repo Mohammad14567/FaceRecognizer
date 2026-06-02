@@ -100,34 +100,47 @@
     }
     .photo-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-    /* === Gesture Carousel (top-middle) === */
+    /* === Gesture Guide (top-middle) === */
     #gesture-guide {
-      position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
-      z-index: 20; pointer-events: none;
-      display: flex; flex-direction: column; align-items: center;
-      width: auto; max-width: 90vw;
+      position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+      z-index: 20;
+      background: rgba(10,10,10,0.92);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex; flex-direction: row; gap: 8px;
+      width: auto; max-width: 94vw;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
     }
-    .g-card {
-      pointer-events: auto; cursor: pointer;
-      background: rgba(20,20,20,0.85);
-      -webkit-backdrop-filter: blur(8px);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px;
-      padding: 18px 36px;
-      display: flex; flex-direction: column; align-items: center; gap: 4px;
-      transition: opacity 0.5s ease, transform 0.5s ease;
-      text-align: center;
-      user-select: none;
+    .g-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: transform 0.6s cubic-bezier(0.34,1.56,0.64,1), background 0.6s, border-color 0.6s, box-shadow 0.6s;
+      transform: scale(0.92);
     }
-    .g-card .g-icon { font-size: 48px; line-height: 1.2; }
-    .g-card .g-name { font-size: 18px; font-weight: 500; color: #fff; margin-top: 4px; }
-    .g-card .g-desc { font-size: 13px; color: #aaa; }
+    .g-item:hover { background: rgba(255,255,255,0.12); }
+    .g-item.focused {
+      transform: scale(1.08);
+      background: rgba(255,255,255,0.14);
+      border-color: rgba(255,255,255,0.2);
+      box-shadow: 0 0 20px rgba(255,255,255,0.06);
+    }
+    .g-item .g-icon { font-size: 26px; flex-shrink: 0; transition: transform 0.6s cubic-bezier(0.34,1.56,0.64,1); }
+    .g-item.focused .g-icon { transform: scale(1.15); }
+    .g-item .g-label { display: flex; flex-direction: column; }
+    .g-item .g-name { font-size: 13px; font-weight: 600; color: #f0f0f0; white-space: nowrap; }
+    .g-item .g-desc { font-size: 10px; color: #aaa; white-space: nowrap; }
     @media (max-width: 767px) {
-      .g-card { padding: 14px 24px; }
-      .g-card .g-icon { font-size: 36px; }
-      .g-card .g-name { font-size: 15px; }
-      #gesture-guide { top: 12px; }
+      #gesture-guide { top: 14px; gap: 5px; padding: 8px 10px; }
+      .g-item { gap: 5px; padding: 5px 8px; }
+      .g-item .g-icon { font-size: 18px; }
+      .g-item .g-name { font-size: 10px; }
+      .g-item .g-desc { font-size: 8px; }
       #status-bar { padding: 2rem 1rem 1rem; }
       #status-text { font-size: 13px; }
       #photo-result { bottom: 60px; }
@@ -135,65 +148,48 @@
       #countdown-badge { font-size: 80px; }
     }
     @media (min-width: 768px) and (max-width: 1024px) {
-      .g-card { padding: 22px 44px; }
-      .g-card .g-icon { font-size: 54px; }
       #countdown-badge { font-size: 140px; }
     }
     @media (orientation: landscape) and (max-height: 500px) {
-      #gesture-guide { top: 8px; }
-      .g-card { padding: 10px 20px; flex-direction: row; gap: 12px; }
-      .g-card .g-icon { font-size: 28px; }
-      .g-card .g-name { font-size: 13px; margin-top: 0; }
-      .g-card .g-desc { font-size: 11px; }
-      #g-dots { margin-top: 6px; }
+      #gesture-guide { top: 8px; gap: 4px; padding: 6px 8px; }
+      .g-item { padding: 4px 6px; gap: 4px; }
+      .g-item .g-icon { font-size: 14px; }
+      .g-item .g-name { font-size: 9px; }
+      .g-item .g-desc { font-size: 8px; }
       #photo-result { bottom: 50px; }
     }
-    .g-card.active { border-color: #8b5cf6; box-shadow: 0 0 20px rgba(139,92,246,0.15); }
-    .g-card.hidden { opacity: 0; transform: scale(0.9); pointer-events: none; position: absolute; }
 
-    /* === Dots indicator === */
-    #g-dots {
-      pointer-events: auto;
-      display: flex; gap: 6px; margin-top: 10px;
+    /* === QR Card === */
+    #qr-card {
+      display: none; position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(20,20,20,0.92);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(139,92,246,0.2);
+      border-radius: 20px; padding: 1.5rem;
+      width: calc(100% - 2rem); max-width: 360px;
+      z-index: 100; text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
     }
-    #g-dots .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: rgba(255,255,255,0.2);
-      cursor: pointer; transition: background 0.3s;
-    }
-    #g-dots .dot.active { background: #8b5cf6; }
-
-    /* === QR Modal === */
-    #qr-modal-overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.85); z-index: 100;
-      align-items: center; justify-content: center;
-      padding: 1rem; text-align: center;
-    }
-    #qr-modal-overlay.show { display: flex; }
-    #qr-modal {
-      background: #141414; border: 1px solid #2a2a2a;
-      border-radius: 16px; padding: 1.5rem;
-      width: 100%; max-width: 400px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-    }
-    #qr-modal h2 { font-size: 20px; font-weight: 500; color: #eee; margin-bottom: 0.5rem; }
-    #qr-modal p { font-size: 13px; color: #777; margin-bottom: 1.25rem; }
-    #qr-code-wrap { display: flex; justify-content: center; margin-bottom: 1.25rem; }
+    #qr-card.show { display: block; }
+    #qr-card h2 { font-size: 18px; font-weight: 500; color: #eee; margin-bottom: 0.3rem; }
+    #qr-card p { font-size: 13px; color: #888; margin-bottom: 1rem; }
+    #qr-code-wrap { display: flex; justify-content: center; margin-bottom: 1rem; }
     #qr-code-wrap img, #qr-code-wrap canvas {
-      border-radius: 12px; border: 3px solid #2a2a2a;
+      border-radius: 12px; border: 2px solid #2a2a2a;
     }
-    #qr-modal .photo-count { font-size: 12px; color: #555; margin-bottom: 0.25rem; }
+    #qr-card .photo-count { font-size: 11px; color: #555; margin-bottom: 0.25rem; }
     #btn-close-qr {
       font-family: 'DM Sans', sans-serif;
-      font-size: 14px; font-weight: 500;
-      padding: 12px 22px;
-      border-radius: 8px; border: 1px solid #8b5cf6;
-      background: transparent; color: #a78bfa;
+      font-size: 13px; font-weight: 500;
+      padding: 10px 20px;
+      border-radius: 8px; border: 1px solid #555;
+      background: transparent; color: #aaa;
       cursor: pointer;
-      width: 100%; justify-content: center;
+      width: 100%;
     }
-    #btn-close-qr:hover { background: #1e122e; }
+    #btn-close-qr:hover { background: rgba(255,255,255,0.05); }
 
   </style>
 </head>
@@ -221,31 +217,21 @@
   </div>
 
   <div id="gesture-guide">
-    <div class="g-card active" data-idx="0" onclick="selectGesture(0)">
+    <div class="g-item">
       <span class="g-icon">🖐</span>
-      <div class="g-name">كف مفتوح</div>
-      <div class="g-desc">عد ٣ ثواني → تصوير</div>
+      <div class="g-label"><span class="g-name">كف مفتوح</span><span class="g-desc">عد ٣ ثواني → تصوير</span></div>
     </div>
-    <div class="g-card hidden" data-idx="1" onclick="selectGesture(1)">
+    <div class="g-item">
       <span class="g-icon">✌️</span>
-      <div class="g-name">سلام</div>
-      <div class="g-desc">تصوير فوري</div>
+      <div class="g-label"><span class="g-name">سلام</span><span class="g-desc">تصوير فوري</span></div>
     </div>
-    <div class="g-card hidden" data-idx="2" onclick="selectGesture(2)">
+    <div class="g-item">
       <span class="g-icon">👊</span>
-      <div class="g-name">قبضة</div>
-      <div class="g-desc">إلغاء</div>
+      <div class="g-label"><span class="g-name">قبضة</span><span class="g-desc">إلغاء</span></div>
     </div>
-    <div class="g-card hidden" data-idx="3" onclick="selectGesture(3)">
-      <span class="g-icon">☝️</span>
-      <div class="g-name">إصبع واحد</div>
-      <div class="g-desc">إنشاء QR لتحميل الصور</div>
-    </div>
-    <div id="g-dots">
-      <div class="dot active" onclick="selectGesture(0)"></div>
-      <div class="dot" onclick="selectGesture(1)"></div>
-      <div class="dot" onclick="selectGesture(2)"></div>
-      <div class="dot" onclick="selectGesture(3)"></div>
+    <div class="g-item">
+      <span class="g-icon">👍</span>
+      <div class="g-label"><span class="g-name">إبهام للأعلى</span><span class="g-desc">إنشاء QR لتحميل الصور</span></div>
     </div>
   </div>
 
@@ -255,20 +241,19 @@
     MediaPipe failed to load. Please check your internet connection and reload the page.
   </div>
 
-  <div id="qr-modal-overlay">
-    <div id="qr-modal">
-      <h2>📸 مسح QR لتحميل الصور</h2>
-      <p>امسح رمز QR بهاتفك لتحميل جميع الصور</p>
-      <div id="qr-code-wrap"></div>
-      <div class="photo-count" id="qr-photo-count"></div>
-      <button id="btn-close-qr" onclick="closeQRModal()">إغلاق</button>
-    </div>
+  <div id="qr-card">
+    <h2>📸 مسح QR لتحميل الصور</h2>
+    <p>امسح QR بهاتفك — افتح كل صورة واضغط زر التحميل</p>
+    <div id="qr-code-wrap"></div>
+    <div class="photo-count" id="qr-photo-count"></div>
+    <button id="btn-close-qr" onclick="closeQRModal()">إغلاق</button>
   </div>
 
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-5niY7cY6Dw/F7eYc2dcFqd8WDuhQXmBwY8IsYOdgIF7V/P/Y0b+1lzqIYaErwLxaG6xE1BF96vy66pSl7r5LJQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script>
 const video      = document.getElementById('video');
@@ -280,56 +265,17 @@ const statusMsg  = document.getElementById('status-msg');
 const photoResult = document.getElementById('photo-result');
 const placeholder = document.getElementById('cam-placeholder');
 
-let ctx, handsModel, mpCam;
+let ctx, handsModel, faceModel, mpCam;
+let faceDetections = [];
+let focusIdx = 0;
+let focusTimer = null;
 let countingDown = false, snapped = false;
 let gestureHoldFrames = 0;
 const HOLD_FRAMES = 18;
 let lastGesture = null;
 const photos = [];
 
-let gestureIdx = 0;
-let gestureTimer = null;
-let gesturePause = false;
 
-const GESTURES = [
-  { icon: '🖐', name: 'كف مفتوح', desc: 'عد ٣ ثواني → تصوير' },
-  { icon: '✌️', name: 'سلام', desc: 'تصوير فوري' },
-  { icon: '👊', name: 'قبضة', desc: 'إلغاء' },
-  { icon: '☝️', name: 'إصبع واحد', desc: 'إنشاء QR لتحميل الصور' }
-];
-
-function showGesture(i) {
-  const cards = document.querySelectorAll('.g-card');
-  const dots = document.querySelectorAll('.dot');
-  cards.forEach((c, idx) => {
-    c.classList.toggle('active', idx === i);
-    c.classList.toggle('hidden', idx !== i);
-  });
-  dots.forEach((d, idx) => d.classList.toggle('active', idx === i));
-  gestureIdx = i;
-}
-
-function startGestureAuto() {
-  stopGestureAuto();
-  gestureTimer = setInterval(() => {
-    if (gesturePause) return;
-    showGesture((gestureIdx + 1) % GESTURES.length);
-  }, 3000);
-}
-
-function stopGestureAuto() {
-  if (gestureTimer) { clearInterval(gestureTimer); gestureTimer = null; }
-}
-
-function selectGesture(i) {
-  showGesture(i);
-  gesturePause = true;
-  stopGestureAuto();
-  setTimeout(() => {
-    gesturePause = false;
-    if (!gestureTimer) startGestureAuto();
-  }, 10000);
-}
 
 function setStatus(msg, state) {
   statusMsg.textContent = msg;
@@ -349,15 +295,40 @@ function classifyGesture(lm) {
   const thumbOut = extended[0];
   if (fingerCount === 4 && thumbOut) return 'open';
   if (fingerCount === 2 && extended[1] && extended[2] && !extended[3] && !extended[4]) return 'peace';
-  if (fingerCount === 1 && extended[1]) return 'one';
+  if (thumbOut && fingerCount === 0) return 'thumbsup';
   if (fingerCount === 0) return 'fist';
   return 'none';
 }
 
+function videoRect() {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const cw = overlay.width, ch = overlay.height;
+  const vA = vw / vh, cA = cw / ch;
+  let dw, dh, dx, dy;
+  if (vA > cA) { dh = ch; dw = dh * vA; dx = (cw - dw) / 2; dy = 0; }
+  else { dw = cw; dh = dw / vA; dx = 0; dy = (ch - dh) / 2; }
+  return { x: dx, y: dy, w: dw, h: dh };
+}
+
+function focusItem(idx) {
+  const items = document.querySelectorAll('.g-item');
+  items.forEach((el, i) => el.classList.toggle('focused', i === idx));
+  focusIdx = idx;
+}
+
+function startFocusCycle() {
+  stopFocusCycle();
+  focusItem(0);
+  focusTimer = setInterval(() => focusItem((focusIdx + 1) % document.querySelectorAll('.g-item').length), 4000);
+}
+
+function stopFocusCycle() {
+  if (focusTimer) { clearInterval(focusTimer); focusTimer = null; }
+}
+
 function drawLandmarks(lm) {
   if (!ctx || !lm) return;
-  ctx.clearRect(0, 0, overlay.width, overlay.height);
-  const w = overlay.width, h = overlay.height;
+  const v = videoRect();
   const connections = [
     [0,1],[1,2],[2,3],[3,4],
     [0,5],[5,6],[6,7],[7,8],
@@ -365,19 +336,95 @@ function drawLandmarks(lm) {
     [9,13],[13,14],[14,15],[15,16],
     [13,17],[17,18],[18,19],[19,20],[0,17]
   ];
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-  ctx.lineWidth = 2;
+  
+  ctx.save();
+  ctx.shadowColor = 'rgba(245,158,11,0.3)';
+  ctx.shadowBlur = 8;
+  ctx.strokeStyle = 'rgba(245,158,11,0.35)';
+  ctx.lineWidth = 1.5;
   for (const [a, b] of connections) {
     ctx.beginPath();
-    ctx.moveTo((1 - lm[a].x) * w, lm[a].y * h);
-    ctx.lineTo((1 - lm[b].x) * w, lm[b].y * h);
+    ctx.moveTo((1 - lm[a].x) * v.w + v.x, lm[a].y * v.h + v.y);
+    ctx.lineTo((1 - lm[b].x) * v.w + v.x, lm[b].y * v.h + v.y);
     ctx.stroke();
   }
+  ctx.restore();
+
+  ctx.shadowColor = 'rgba(245,158,11,0.6)';
+  ctx.shadowBlur = 12;
   for (const p of lm) {
     ctx.beginPath();
-    ctx.arc((1 - p.x) * w, p.y * h, 5, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(245,158,11,0.9)';
+    ctx.arc((1 - p.x) * v.w + v.x, p.y * v.h + v.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#fbbf24';
     ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+  for (const p of lm) {
+    ctx.beginPath();
+    ctx.arc((1 - p.x) * v.w + v.x, p.y * v.h + v.y, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  if (typeof ctx.roundRect === 'function') { ctx.roundRect(x, y, w, h, r); return; }
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+}
+
+function drawFaces(detections) {
+  if (!ctx || !detections) return;
+  const v = videoRect();
+  for (const d of detections) {
+    const box = d.boundingBox;
+    const x = (1 - box.xMin - box.width) * v.w + v.x;
+    const y = box.yMin * v.h + v.y;
+    const bw = box.width * v.w;
+    const bh = box.height * v.h;
+    ctx.save();
+    ctx.shadowColor = 'rgba(139,92,246,0.3)';
+    ctx.shadowBlur = 18;
+    ctx.strokeStyle = 'rgba(139,92,246,0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    roundRect(ctx, x - 4, y - 4, bw + 8, bh + 8, 12);
+    ctx.stroke();
+    ctx.restore();
+    ctx.save();
+    ctx.shadowColor = 'rgba(139,92,246,0.1)';
+    ctx.shadowBlur = 24;
+    ctx.strokeStyle = 'rgba(139,92,246,0.12)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    roundRect(ctx, x - 4, y - 4, bw + 8, bh + 8, 12);
+    ctx.stroke();
+    ctx.restore();
+
+    if (d.landmarks) {
+      for (const lp of d.landmarks) {
+        const px = (1 - lp.x) * v.w + v.x, py = lp.y * v.h + v.y;
+        ctx.save();
+        ctx.shadowColor = 'rgba(139,92,246,0.5)';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#a78bfa';
+        ctx.fill();
+        ctx.restore();
+        ctx.beginPath();
+        ctx.arc(px, py, 1.2, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+      }
+    }
   }
 }
 
@@ -451,8 +498,7 @@ function restartApp() {
 }
 
 function closeQRModal() {
-  document.getElementById('qr-modal-overlay').classList.remove('show');
-  setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
+  document.getElementById('qr-card').classList.remove('show');
 }
 
 
@@ -487,7 +533,7 @@ function fallbackDownload() {
     a.download = 'moria_' + (i + 1) + '.jpg';
     a.click();
   });
-  setTimeout(() => setStatus('✅ تم التحميل! ارفع إصبع واحد لل QR', 'ready'), 1000);
+  setTimeout(() => setStatus('✅ تم التحميل! ارفع إبهامك لل QR', 'ready'), 1000);
 }
 
 async function generateQRCode() {
@@ -527,7 +573,10 @@ async function generateQRCode() {
         body: JSON.stringify({
           access_token: token, title: 'صور من مطعم ومقهى موريا',
           author_name: 'مطعم ومقهى موريا',
-          content: [ ...urls.map(u => ({ tag: 'img', attrs: { src: u } })), { tag: 'p', children: ['📸 مطعم ومقهى موريا'] } ]
+          content: [ ...urls.flatMap(u => [
+            { tag: 'img', attrs: { src: u } },
+            { tag: 'p', children: [{ tag: 'a', attrs: { href: u }, children: ['⬇ تحميل الصورة'] }] }
+          ]), { tag: 'p', children: ['📸 مطعم ومقهى موريا - افتح كل صورة واضغط على رابط التحميل أسفلها'] } ]
         })
       })).json();
       if (p.ok) pageUrl = 'https://telegra.ph/' + p.result.path;
@@ -544,91 +593,25 @@ function showQRCard(text, count) {
   const wrap = document.getElementById('qr-code-wrap');
   wrap.innerHTML = '';
   new QRCode(wrap, {
-    text: text, width: 240, height: 240,
+    text: text, width: 200, height: 200,
     colorDark: '#ffffff', colorLight: '#141414',
     correctLevel: QRCode.CorrectLevel.M
   });
   document.getElementById('qr-photo-count').textContent = count + ' صورة — امسح QR بهاتفك';
-  document.getElementById('qr-modal-overlay').classList.add('show');
+  document.getElementById('qr-card').classList.add('show');
   setStatus('✅ QR جاهز! امسحه لفتح المعرض', 'ready');
 }
 
-async function uploadToTelegraph(dataUrl) {
-  const fd = new FormData();
-  fd.append('file', dataURLtoBlob(dataUrl), 'photo_' + Date.now() + '.jpg');
-  const r = await fetch('https://telegra.ph/upload', { method: 'POST', body: fd });
-  const d = await r.json();
-  if (!d || !d[0] || !d[0].src) throw new Error('فشل رفع الصورة');
-  return 'https://telegra.ph' + d[0].src;
-}
-
-async function generateQRCode() {
-  if (photos.length === 0) {
-    setStatus('⚠️ التقط الصور أولاً', 'ready');
-    return;
-  }
-  
-  if (typeof QRCode === 'undefined') {
-    setStatus('❌ مكتبة QR لم يتم تحميلها، أعد تحميل الصفحة', 'ready');
-    return;
-  }
-  
-  setStatus('📸 جاري رفع الصور...', 'gesture');
-  
-  try {
-    const urls = [];
-    for (let i = 0; i < photos.length; i++) {
-      setStatus('📸 رفع الصورة ' + (i + 1) + '/' + photos.length + '...', 'gesture');
-      urls.push(await uploadToTelegraph(photos[i]));
-    }
-    const galleryPage = await createTelegraphGallery(urls);
-    showQRCard(galleryPage, urls.length);
-  } catch (e) {
-    setStatus('❌ ' + e.message, 'ready');
-  }
-}
-
-async function createTelegraphGallery(imgUrls) {
-  let token = localStorage.getItem('tg_token');
-  if (!token) {
-    const a = await (await fetch('https://api.telegra.ph/createAccount', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ short_name: 'Moria', author_name: 'مطعم ومقهى موريا' })
-    })).json();
-    if (!a.ok) throw new Error('فشل إنشاء الحساب');
-    token = a.result.access_token;
-    localStorage.setItem('tg_token', token);
-  }
-  const content = imgUrls.map(u => ({ tag: 'img', attrs: { src: u } }));
-  content.push({ tag: 'p', children: ['📸 مطعم ومقهى موريا'] });
-  const p = await (await fetch('https://api.telegra.ph/createPage', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      access_token: token, title: 'صور من مطعم ومقهى موريا',
-      author_name: 'مطعم ومقهى موريا', content: content
-    })
-  })).json();
-  if (!p.ok) throw new Error('فشل إنشاء صفحة المعرض');
-  return 'https://telegra.ph/' + p.result.path;
-}
-
-function showQRCard(url, count) {
-  const wrap = document.getElementById('qr-code-wrap');
-  wrap.innerHTML = '';
-  new QRCode(wrap, {
-    text: url, width: 240, height: 240,
-    colorDark: '#ffffff', colorLight: '#141414',
-    correctLevel: QRCode.CorrectLevel.M
-  });
-  document.getElementById('qr-photo-count').textContent = count + ' صورة — امسح QR بهاتفك';
-  document.getElementById('qr-modal-overlay').classList.add('show');
-  setStatus('✅ QR جاهز! امسحه لفتح المعرض', 'ready');
+function onFaceResults(results) {
+  faceDetections = results.detections || [];
 }
 
 function onResults(results) {
   if (snapped || countingDown) return;
-  overlay.width  = video.videoWidth  || 640;
-  overlay.height = video.videoHeight || 360;
+  overlay.width  = overlay.clientWidth  || 640;
+  overlay.height = overlay.clientHeight || 360;
+  if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
+  if (faceDetections.length > 0) drawFaces(faceDetections);
   const lm = results.multiHandLandmarks?.[0];
   if (lm) {
     drawLandmarks(lm);
@@ -646,8 +629,8 @@ function onResults(results) {
           capturePhoto();
         } else if (g === 'fist') {
           setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
-        } else if (g === 'one') {
-          setStatus('☝️ إنشاء رمز QR...', 'gesture');
+        } else if (g === 'thumbsup') {
+          setStatus('👍 إنشاء رمز QR...', 'gesture');
           generateQRCode();
         }
       } else {
@@ -655,7 +638,7 @@ function onResults(results) {
           open: '🖐 أمسك الكف ثابتاً...',
           peace: '✌️ أمسك السلام ثابتاً...',
           fist: '👊 قبضة — إلغاء',
-          one: '☝️ أمسك الإصبع ثابتاً...'
+          thumbsup: '👍 أمسك الإبهام ثابتاً...'
         };
         setStatus(names[g] || 'تم اكتشاف إيماءة...', 'gesture');
       }
@@ -665,7 +648,6 @@ function onResults(results) {
       setStatus('اعرض إيماءة لالتقاط صورة', 'ready');
     }
   } else {
-    if (ctx) ctx.clearRect(0, 0, overlay.width, overlay.height);
     lastGesture = null;
     gestureHoldFrames = 0;
     setStatus('لم يتم اكتشاف يد — اعرض يدك للكاميرا', 'ready');
@@ -700,8 +682,22 @@ async function startCam() {
     });
     handsModel.onResults(onResults);
 
+    faceModel = new FaceDetection({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${f}`
+    });
+    faceModel.setOptions({
+      modelSelection: 0,
+      minDetectionConfidence: 0.5
+    });
+    faceModel.onResults(onFaceResults);
+
     mpCam = new Camera(video, {
-      onFrame: async () => { await handsModel.send({ image: video }); },
+      onFrame: async () => {
+        await Promise.all([
+          handsModel.send({ image: video }),
+          faceModel.send({ image: video })
+        ]);
+      },
       width: 1280,
       height: 720
     });
@@ -715,7 +711,7 @@ async function startCam() {
 
 window.addEventListener('load', () => {
   startCam();
-  startGestureAuto();
+  startFocusCycle();
 });
 
 </script>
