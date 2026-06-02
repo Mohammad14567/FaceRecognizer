@@ -589,7 +589,7 @@ function dataURLtoBlob(dataUrl) {
   return new Blob([arr], { type: mime });
 }
 
-async function uploadImage(dataUrl) {
+async function uploadToTelegraph(dataUrl) {
   const blob = dataURLtoBlob(dataUrl);
   const fd = new FormData();
   fd.append('file', blob, `photo_${Date.now()}.jpg`);
@@ -598,24 +598,64 @@ async function uploadImage(dataUrl) {
     body: fd
   });
   const data = await response.json();
-  if (!data || !data[0] || !data[0].src) throw new Error('فشل الرفع');
+  if (!data || !data[0] || !data[0].src) throw new Error('فشل رفع الصورة');
   return 'https://telegra.ph' + data[0].src;
 }
 
-function showQRCard(urls) {
+async function getTelegraphToken() {
+  let token = localStorage.getItem('tg_token');
+  if (token) return token;
+  const res = await fetch('https://api.telegra.ph/createAccount', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ short_name: 'Moria', author_name: 'مطعم ومقهى موريا' })
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error('فشل إنشاء الحساب');
+  localStorage.setItem('tg_token', data.result.access_token);
+  return data.result.access_token;
+}
+
+async function createTelegraphPage(imageUrls) {
+  const content = imageUrls.map(url => ({
+    tag: 'img',
+    attrs: { src: url }
+  }));
+  content.push({
+    tag: 'p',
+    children: ['📸 صور من مطعم ومقهى موريا']
+  });
+  
+  const token = await getTelegraphToken();
+  const pageRes = await fetch('https://api.telegra.ph/createPage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      access_token: token,
+      title: 'صور من مطعم ومقهى موريا',
+      author_name: 'مطعم ومقهى موريا',
+      content: content
+    })
+  });
+  const page = await pageRes.json();
+  if (!page.ok) throw new Error('فشل إنشاء صفحة المعرض');
+  return 'https://telegra.ph/' + page.result.path;
+}
+
+function showQRCard(url) {
   const wrap = document.getElementById('qr-code-wrap');
   wrap.innerHTML = '';
-  const qr = new QRCode(wrap, {
-    text: urls.join('\n'),
+  new QRCode(wrap, {
+    text: url,
     width: 240,
     height: 240,
     colorDark: '#ffffff',
     colorLight: '#141414',
     correctLevel: QRCode.CorrectLevel.M
   });
-  document.getElementById('qr-photo-count').textContent = `${urls.length} صورة`;
+  document.getElementById('qr-photo-count').textContent = 'جميع الصور في رابط واحد';
   document.getElementById('qr-modal-overlay').classList.add('show');
-  setStatus('✅ ' + urls.length + ' صورة جاهزة! امسح QR', 'ready');
+  setStatus('✅ QR جاهز! امسحه لفتح معرض الصور', 'ready');
 }
 
 async function generateQRCode() {
@@ -632,15 +672,18 @@ async function generateQRCode() {
   setStatus('📸 جاري رفع الصور...', 'gesture');
   
   try {
-    const uploadedUrls = [];
+    const imageUrls = [];
     for (let i = 0; i < photos.length; i++) {
-      setStatus(`📸 جاري رفع الصورة ${i+1}/${photos.length}...`, 'gesture');
-      const url = await uploadImage(photos[i]);
-      uploadedUrls.push(url);
+      setStatus('📸 جاري رفع الصورة ' + (i + 1) + '/' + photos.length + '...', 'gesture');
+      const url = await uploadToTelegraph(photos[i]);
+      imageUrls.push(url);
     }
-    showQRCard(uploadedUrls);
+    
+    setStatus('📄 جاري إنشاء صفحة المعرض...', 'gesture');
+    const pageUrl = await createTelegraphPage(imageUrls);
+    showQRCard(pageUrl);
   } catch (e) {
-    setStatus('❌ فشل رفع الصور: ' + e.message, 'ready');
+    setStatus('❌ فشل: ' + e.message, 'ready');
   }
 }
 
