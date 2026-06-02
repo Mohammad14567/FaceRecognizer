@@ -83,22 +83,6 @@
     padding: 10px 14px;
   }
 
-  #distance-hint {
-    position: fixed;
-    top: 88px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10;
-    background: rgba(13,13,13,0.5);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 14px;
-    padding: 4px 14px;
-    font-size: 11px;
-    color: rgba(255,255,255,0.35);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    white-space: nowrap;
-  }
 
   .gesture-item {
     display: flex;
@@ -307,7 +291,7 @@
     .gesture-item { padding: 6px 8px; min-width: 56px; }
     .gesture-icon { font-size: 20px; }
     .gesture-label { font-size: 9px; }
-    #distance-hint { font-size: 10px; padding: 3px 10px; top: 82px; }
+
   }
 
   @media (min-width: 768px) and (max-width: 1024px) {
@@ -350,7 +334,6 @@
   </div>
 </div>
 
-<div id="distance-hint">📏 حافظ على مسافة 0.5 – 1 متر للحصول على أفضل نتيجة</div>
 
 <!-- Countdown -->
 <div id="countdown"></div>
@@ -790,9 +773,9 @@ const hands = new Hands({
 
 hands.setOptions({
   maxNumHands: 1,
-  modelComplexity: 2,
-  minDetectionConfidence: 0.4,
-  minTrackingConfidence: 0.4
+  modelComplexity: 1,
+  minDetectionConfidence: 0.5,
+  minTrackingConfidence: 0.5
 });
 
 hands.onResults(results => {
