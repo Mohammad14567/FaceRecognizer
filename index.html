@@ -416,45 +416,72 @@ if (galleryIds) {
     overlay.style.display = 'flex';
   };
 
-  window.downloadOne = function (idx) {
+  window.downloadOne = function (idx, cb) {
+    cb = cb || function () {};
     var f = gFilters[gFilterState[idx]];
-    if (f.css === 'none') {
+    var imgUrl = 'https://res.cloudinary.com/' + gCloud + '/image/upload/' + gIds[idx];
+    function trigger(url) {
       var a = document.createElement('a');
-      a.href = 'https://res.cloudinary.com/' + gCloud + '/image/upload/fl_attachment:' + gIds[idx] + '/' + gIds[idx];
+      a.href = url;
       a.download = 'moria-' + (idx + 1) + '.jpg';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      return;
+      setTimeout(cb, 600);
     }
-    var filterCss = f.css;
-    var img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = function () {
-      var canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      var ctx = canvas.getContext('2d');
-      ctx.filter = filterCss;
-      ctx.drawImage(img, 0, 0);
-      canvas.toBlob(function (blob) {
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = 'moria-' + (idx + 1) + '.jpg';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 'image/jpeg', 0.95);
-    };
-    img.src = 'https://res.cloudinary.com/' + gCloud + '/image/upload/' + gIds[idx];
+    if (f.css === 'none') {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', imgUrl, true);
+      xhr.responseType = 'blob';
+      xhr.onload = function () {
+        var url = URL.createObjectURL(xhr.response);
+        trigger(url);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+      };
+      xhr.onerror = function () { fallbackCanvas(null); };
+      xhr.send();
+    } else {
+      fallbackCanvas(f.css);
+    }
+    function fallbackCanvas(filterCss) {
+      var img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function () {
+        var c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        var ctx = c.getContext('2d');
+        if (filterCss) ctx.filter = filterCss;
+        ctx.drawImage(img, 0, 0);
+        c.toBlob(function (blob) {
+          var url = URL.createObjectURL(blob);
+          trigger(url);
+          setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+        }, 'image/jpeg', 0.95);
+      };
+      img.src = imgUrl;
+    }
   };
 
   window.downloadAll = function () {
-    gIds.forEach(function (_, i) {
-      setTimeout(function () { downloadOne(i); }, i * 800);
-    });
+    var i = 0;
+    function next() {
+      if (i >= gIds.length) return;
+      var btn = document.getElementById('dl-all');
+      btn.disabled = true;
+      btn.textContent = '⬇⬇ جاري التحميل... (' + (i + 1) + '/' + gIds.length + ')';
+      downloadOne(i, function () {
+        i++;
+        btn.textContent = '⬇⬇ جاري التحميل... (' + (Math.min(i + 1, gIds.length)) + '/' + gIds.length + ')';
+        if (i < gIds.length) {
+          setTimeout(next, 400);
+        } else {
+          btn.textContent = '⬇⬇ تم التحميل ✓';
+          setTimeout(function () { btn.disabled = false; btn.textContent = '⬇⬇ تحميل الكل'; }, 3000);
+        }
+      });
+    }
+    next();
   };
 
   var imgs = ids.map(function (id, i) {
@@ -467,6 +494,7 @@ if (galleryIds) {
 
   document.body.innerHTML =
     '<style>' +
+    'html{overflow:auto;height:auto}' +
     'body{margin:0;padding:20px;font-family:sans-serif;background:#111;color:#fff;direction:rtl}' +
     'h1{text-align:center;color:#fbbf24;font-size:22px;margin-bottom:24px}' +
     '#dl-all{display:block;width:fit-content;margin:0 auto 20px;background:#22c55e;color:#000;border:none;padding:14px 32px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer}' +
